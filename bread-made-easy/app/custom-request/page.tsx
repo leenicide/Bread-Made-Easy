@@ -1,7 +1,7 @@
 import { Header } from "@/components/header"
 import { EnhancedRequestForm } from "@/components/custom-request/enhanced-request-form"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Lightbulb, Clock, Users, CheckCircle, Star, MessageSquare } from "lucide-react"
+import { Lightbulb, Clock, Users, CheckCircle, Star, MessageSquare, Crown, Target, Scale, Gem, Calendar } from "lucide-react"
 
 export default function CustomRequestPage() {
   return (
@@ -10,45 +10,93 @@ export default function CustomRequestPage() {
       <main className="container mx-auto py-8 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <h1 className="text-3xl font-bold mb-4">Custom Funnel Request</h1>
+            <h1 className="text-3xl font-bold mb-4">Your Business. Your Oven. Built From Scratch.</h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Need something specific? Our expert team will create a custom sales funnel tailored to your exact business
-              needs and requirements.
+              Not all Wealth Ovens are created equal. Some are engineered exclusively for one business — yours.
+            </p>
+          </div>
+
+          {/* Why Choose a Custom Build */}
+          <div className="mb-16">
+            <div className="flex items-center justify-center mb-8">
+              <Gem className="h-8 w-8 text-primary mr-3" />
+              <h2 className="text-3xl font-bold">Why Choose a Custom Build?</h2>
+            </div>
+            <p className="text-lg text-muted-foreground mb-6 text-center max-w-4xl mx-auto">
+              If the Wealth Ovens released at auction are powerful machines, then a Custom Wealth Oven™ is a precision-crafted masterpiece.
+            </p>
+            <p className="text-lg text-muted-foreground text-center max-w-4xl mx-auto">
+              A custom build means every page, headline, and sequence is designed around your exact product, market, and goals. 
+              You'll get private strategy calls with our team to map your unique Oven blueprint, creating a system that doesn't 
+              just generate sales — it maximizes your specific business ROI.
             </p>
           </div>
 
           <div className="grid lg:grid-cols-4 gap-8 mb-12">
             <div className="flex flex-col items-center text-center p-6">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <Lightbulb className="h-6 w-6 text-primary" />
+                <Target className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="font-semibold text-lg mb-2">Custom Design</h3>
-              <p className="text-muted-foreground">Tailored to your brand, industry, and specific conversion goals</p>
-            </div>
-
-            <div className="flex flex-col items-center text-center p-6">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <Clock className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2">Fast Delivery</h3>
-              <p className="text-muted-foreground">Most custom funnels completed within 7-14 business days</p>
+              <h3 className="font-semibold text-lg mb-2">Precision Crafted</h3>
+              <p className="text-muted-foreground">Tailored to your exact product, market, and conversion goals</p>
             </div>
 
             <div className="flex flex-col items-center text-center p-6">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <Users className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="font-semibold text-lg mb-2">Expert Team</h3>
-              <p className="text-muted-foreground">Experienced designers and developers with proven track records</p>
+              <h3 className="font-semibold text-lg mb-2">Private Strategy</h3>
+              <p className="text-muted-foreground">Direct consultation with our expert team for your blueprint</p>
             </div>
 
             <div className="flex flex-col items-center text-center p-6">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <Star className="h-6 w-6 text-primary" />
+                <Scale className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="font-semibold text-lg mb-2">Guaranteed Results</h3>
-              <p className="text-muted-foreground">100% satisfaction guarantee with unlimited revisions</p>
+              <h3 className="font-semibold text-lg mb-2">Built for Scale</h3>
+              <p className="text-muted-foreground">Designed to grow with you, not limit your potential</p>
             </div>
+
+            <div className="flex flex-col items-center text-center p-6">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <Crown className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="font-semibold text-lg mb-2">Exclusive Access</h3>
+              <p className="text-muted-foreground">Only a handful of custom builds accepted each quarter</p>
+            </div>
+          </div>
+
+          {/* The Process */}
+          <div className="mb-16">
+            <h2 className="text-3xl font-bold mb-8 text-center">The Process</h2>
+            <div className="grid md:grid-cols-4 gap-6 max-w-5xl mx-auto">
+              {[
+                { step: "1", title: "Application", desc: "Submit your details to show you're a serious applicant" },
+                { step: "2", title: "Strategy Call", desc: "We dig into your business, goals, and market" },
+                { step: "3", title: "Blueprint", desc: "We design a system tailored exclusively for you" },
+                { step: "4", title: "Build & Launch", desc: "Our team creates, deploys, and supports your Oven" }
+              ].map((item, index) => (
+                <div key={index} className="flex flex-col items-center text-center p-6 rounded-lg border bg-card">
+                  <div className="h-12 w-12 rounded-full bg-primary text-primary-foreground text-lg font-bold flex items-center justify-center mb-4">
+                    {item.step}
+                  </div>
+                  <h3 className="font-semibold text-lg mb-2">{item.title}</h3>
+                  <p className="text-muted-foreground text-sm">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Exclusivity + Scarcity */}
+          <div className="mb-16 text-center">
+            <div className="flex items-center justify-center mb-8">
+              <Calendar className="h-8 w-8 text-primary mr-3" />
+              <h2 className="text-3xl font-bold">Exclusivity + Scarcity</h2>
+            </div>
+            <p className="text-lg text-muted-foreground max-w-4xl mx-auto">
+              We only take on a handful of custom builds per quarter because each one requires deep focus, attention to detail, 
+              and personalized strategy. If you want a spot, you need to apply now. Once the quarter fills, applications close.
+            </p>
           </div>
 
           <div className="grid lg:grid-cols-3 gap-8">
@@ -68,7 +116,11 @@ export default function CustomRequestPage() {
                   <ul className="space-y-3">
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">Complete funnel design and development</span>
+                      <span className="text-sm">Complete custom Wealth Oven design and development</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm">Private strategy sessions with our team</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
@@ -80,15 +132,15 @@ export default function CustomRequestPage() {
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">Unlimited revisions</span>
+                      <span className="text-sm">Unlimited revisions during design phase</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">30-day support after delivery</span>
+                      <span className="text-sm">90-day support after delivery</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">Performance optimization</span>
+                      <span className="text-sm">Performance optimization and analytics</span>
                     </li>
                   </ul>
                 </CardContent>
@@ -96,64 +148,9 @@ export default function CustomRequestPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Our Process</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex gap-3">
-                      <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
-                        1
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-sm">Discovery Call</h4>
-                        <p className="text-xs text-muted-foreground">We'll discuss your requirements in detail</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-3">
-                      <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
-                        2
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-sm">Proposal & Timeline</h4>
-                        <p className="text-xs text-muted-foreground">Detailed project scope and delivery schedule</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-3">
-                      <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
-                        3
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-sm">Design & Development</h4>
-                        <p className="text-xs text-muted-foreground">Our team creates your custom funnel</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-3">
-                      <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
-                        4
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-sm">Review & Revisions</h4>
-                        <p className="text-xs text-muted-foreground">We refine based on your feedback</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-3">
-                      <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
-                        5
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-sm">Delivery & Support</h4>
-                        <p className="text-xs text-muted-foreground">Final delivery with ongoing support</p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <MessageSquare className="h-5 w-5" />
-                    Recent Reviews
+                    Client Testimonials
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -165,9 +162,9 @@ export default function CustomRequestPage() {
                         ))}
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        "Incredible work! The funnel increased our conversions by 300%."
+                        "The custom Wealth Oven transformed our business. We're seeing 5x ROI within the first quarter."
                       </p>
-                      <p className="text-xs font-medium mt-1">- Sarah K., SaaS Founder</p>
+                      <p className="text-xs font-medium mt-1">- Michael T., E-commerce Owner</p>
                     </div>
                     <div className="border-l-2 border-primary/20 pl-4">
                       <div className="flex items-center gap-1 mb-1">
@@ -176,11 +173,23 @@ export default function CustomRequestPage() {
                         ))}
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        "Professional team, delivered exactly what we needed on time."
+                        "Worth every penny. The strategic approach and custom build delivered exactly what we needed."
                       </p>
-                      <p className="text-xs font-medium mt-1">- Mike R., E-commerce</p>
+                      <p className="text-xs font-medium mt-1">- Jessica L., SaaS Founder</p>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-primary/5 border-primary/20">
+                <CardHeader>
+                  <CardTitle className="text-primary">Limited Availability</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    We only accept a handful of custom builds each quarter. If accepted, you'll join an exclusive circle 
+                    of Wealth Oven owners with systems that can't be duplicated.
+                  </p>
                 </CardContent>
               </Card>
             </div>
