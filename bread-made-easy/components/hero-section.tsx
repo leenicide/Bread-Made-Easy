@@ -22,7 +22,6 @@ export function HeroSection() {
             </Button>
           </div>
         </div>
-
         {/* What's a Wealth Oven */}
         <div className="max-w-4xl mx-auto mb-16">
           <div className="flex items-center justify-center mb-8">
