@@ -1,0 +1,515 @@
+"use client"
+
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { ArrowLeft, ArrowRight, CheckCircle } from "lucide-react"
+
+interface FormData {
+  // Step 1: Basic Info
+  name: string
+  email: string
+  company: string
+  phone: string
+
+  // Step 2: Project Details
+  projectType: string
+  industry: string
+  targetAudience: string
+  primaryGoal: string
+
+  // Step 3: Requirements
+  pages: string[]
+  features: string[]
+  integrations: string[]
+  timeline: string
+  budget: string
+
+  // Step 4: Additional Info
+  inspiration: string
+  additionalNotes: string
+  preferredContact: string
+}
+
+const initialFormData: FormData = {
+  name: "",
+  email: "",
+  company: "",
+  phone: "",
+  projectType: "",
+  industry: "",
+  targetAudience: "",
+  primaryGoal: "",
+  pages: [],
+  features: [],
+  integrations: [],
+  timeline: "",
+  budget: "",
+  inspiration: "",
+  additionalNotes: "",
+  preferredContact: "email",
+}
+
+const steps = [
+  { id: 1, title: "Basic Information", description: "Tell us about yourself" },
+  { id: 2, title: "Project Overview", description: "Describe your project" },
+  { id: 3, title: "Requirements", description: "Specify your needs" },
+  { id: 4, title: "Final Details", description: "Additional information" },
+]
+
+const pageOptions = [
+  "Landing Page",
+  "Sales Page",
+  "Checkout Page",
+  "Thank You Page",
+  "Upsell Page",
+  "Email Capture",
+  "Webinar Registration",
+  "Product Catalog",
+  "About Page",
+  "Contact Page",
+]
+
+const featureOptions = [
+  "Email Integration",
+  "Payment Processing",
+  "CRM Integration",
+  "Analytics Tracking",
+  "A/B Testing",
+  "Mobile Optimization",
+  "SEO Optimization",
+  "Social Media Integration",
+  "Live Chat",
+  "Multi-language Support",
+]
+
+const integrationOptions = [
+  "Mailchimp",
+  "ConvertKit",
+  "HubSpot",
+  "Salesforce",
+  "Stripe",
+  "PayPal",
+  "Zapier",
+  "Google Analytics",
+  "Facebook Pixel",
+  "Calendly",
+]
+
+export function EnhancedRequestForm() {
+  const [currentStep, setCurrentStep] = useState(1)
+  const [formData, setFormData] = useState<FormData>(initialFormData)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [loading, setLoading] = useState(false)
+
+  const progress = (currentStep / steps.length) * 100
+
+  const updateFormData = (field: keyof FormData, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: "" }))
+    }
+  }
+
+  const toggleArrayItem = (field: keyof FormData, item: string) => {
+    const currentArray = formData[field] as string[]
+    const newArray = currentArray.includes(item) ? currentArray.filter((i) => i !== item) : [...currentArray, item]
+    updateFormData(field, newArray)
+  }
+
+  const validateStep = (step: number): boolean => {
+    const newErrors: Record<string, string> = {}
+
+    switch (step) {
+      case 1:
+        if (!formData.name) newErrors.name = "Name is required"
+        if (!formData.email) newErrors.email = "Email is required"
+        if (!formData.company) newErrors.company = "Company is required"
+        break
+      case 2:
+        if (!formData.projectType) newErrors.projectType = "Project type is required"
+        if (!formData.industry) newErrors.industry = "Industry is required"
+        if (!formData.primaryGoal) newErrors.primaryGoal = "Primary goal is required"
+        break
+      case 3:
+        if (formData.pages.length === 0) newErrors.pages = "Select at least one page type"
+        if (!formData.timeline) newErrors.timeline = "Timeline is required"
+        if (!formData.budget) newErrors.budget = "Budget is required"
+        break
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const nextStep = () => {
+    if (validateStep(currentStep)) {
+      setCurrentStep((prev) => Math.min(prev + 1, steps.length))
+    }
+  }
+
+  const prevStep = () => {
+    setCurrentStep((prev) => Math.max(prev - 1, 1))
+  }
+
+  const handleSubmit = async () => {
+    if (!validateStep(currentStep)) return
+
+    setLoading(true)
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+
+      // Show success message or redirect
+      alert("Request submitted successfully! We'll contact you within 24 hours.")
+
+      // Reset form
+      setFormData(initialFormData)
+      setCurrentStep(1)
+    } catch (error) {
+      console.error("Failed to submit request:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const renderStep = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => updateFormData("name", e.target.value)}
+                  placeholder="John Doe"
+                />
+                {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => updateFormData("email", e.target.value)}
+                  placeholder="john@company.com"
+                />
+                {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="company">Company Name *</Label>
+                <Input
+                  id="company"
+                  value={formData.company}
+                  onChange={(e) => updateFormData("company", e.target.value)}
+                  placeholder="Your Company Inc."
+                />
+                {errors.company && <p className="text-sm text-destructive">{errors.company}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => updateFormData("phone", e.target.value)}
+                  placeholder="+1 (555) 123-4567"
+                />
+              </div>
+            </div>
+          </div>
+        )
+
+      case 2:
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Project Type *</Label>
+              <Select value={formData.projectType} onValueChange={(value) => updateFormData("projectType", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select project type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lead-generation">Lead Generation Funnel</SelectItem>
+                  <SelectItem value="sales-funnel">Sales Funnel</SelectItem>
+                  <SelectItem value="ecommerce">E-commerce Store</SelectItem>
+                  <SelectItem value="course-launch">Course Launch</SelectItem>
+                  <SelectItem value="webinar-funnel">Webinar Funnel</SelectItem>
+                  <SelectItem value="membership-site">Membership Site</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.projectType && <p className="text-sm text-destructive">{errors.projectType}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Industry *</Label>
+              <Select value={formData.industry} onValueChange={(value) => updateFormData("industry", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your industry" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="saas">SaaS</SelectItem>
+                  <SelectItem value="ecommerce">E-commerce</SelectItem>
+                  <SelectItem value="coaching">Coaching</SelectItem>
+                  <SelectItem value="consulting">Consulting</SelectItem>
+                  <SelectItem value="real-estate">Real Estate</SelectItem>
+                  <SelectItem value="fitness">Health & Fitness</SelectItem>
+                  <SelectItem value="education">Education</SelectItem>
+                  <SelectItem value="finance">Finance</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.industry && <p className="text-sm text-destructive">{errors.industry}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="targetAudience">Target Audience</Label>
+              <Textarea
+                id="targetAudience"
+                value={formData.targetAudience}
+                onChange={(e) => updateFormData("targetAudience", e.target.value)}
+                placeholder="Describe your ideal customer..."
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="primaryGoal">Primary Goal *</Label>
+              <Textarea
+                id="primaryGoal"
+                value={formData.primaryGoal}
+                onChange={(e) => updateFormData("primaryGoal", e.target.value)}
+                placeholder="What do you want to achieve with this funnel?"
+                rows={3}
+              />
+              {errors.primaryGoal && <p className="text-sm text-destructive">{errors.primaryGoal}</p>}
+            </div>
+          </div>
+        )
+
+      case 3:
+        return (
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <Label>Pages Needed *</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {pageOptions.map((page) => (
+                  <div key={page} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={page}
+                      checked={formData.pages.includes(page)}
+                      onCheckedChange={() => toggleArrayItem("pages", page)}
+                    />
+                    <Label htmlFor={page} className="text-sm">
+                      {page}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+              {errors.pages && <p className="text-sm text-destructive">{errors.pages}</p>}
+            </div>
+
+            <div className="space-y-3">
+              <Label>Features Required</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {featureOptions.map((feature) => (
+                  <div key={feature} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={feature}
+                      checked={formData.features.includes(feature)}
+                      onCheckedChange={() => toggleArrayItem("features", feature)}
+                    />
+                    <Label htmlFor={feature} className="text-sm">
+                      {feature}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Timeline *</Label>
+                <Select value={formData.timeline} onValueChange={(value) => updateFormData("timeline", value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Project timeline" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="asap">ASAP (Rush fee applies)</SelectItem>
+                    <SelectItem value="1-2weeks">1-2 weeks</SelectItem>
+                    <SelectItem value="2-4weeks">2-4 weeks</SelectItem>
+                    <SelectItem value="1-2months">1-2 months</SelectItem>
+                    <SelectItem value="flexible">Flexible</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.timeline && <p className="text-sm text-destructive">{errors.timeline}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Budget Range *</Label>
+                <Select value={formData.budget} onValueChange={(value) => updateFormData("budget", value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select budget" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1000-2500">$1,000 - $2,500</SelectItem>
+                    <SelectItem value="2500-5000">$2,500 - $5,000</SelectItem>
+                    <SelectItem value="5000-10000">$5,000 - $10,000</SelectItem>
+                    <SelectItem value="10000-25000">$10,000 - $25,000</SelectItem>
+                    <SelectItem value="25000+">$25,000+</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.budget && <p className="text-sm text-destructive">{errors.budget}</p>}
+              </div>
+            </div>
+          </div>
+        )
+
+      case 4:
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="inspiration">Inspiration/References</Label>
+              <Textarea
+                id="inspiration"
+                value={formData.inspiration}
+                onChange={(e) => updateFormData("inspiration", e.target.value)}
+                placeholder="Share any websites, designs, or examples you like..."
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="additionalNotes">Additional Notes</Label>
+              <Textarea
+                id="additionalNotes"
+                value={formData.additionalNotes}
+                onChange={(e) => updateFormData("additionalNotes", e.target.value)}
+                placeholder="Any other requirements or information..."
+                rows={4}
+              />
+            </div>
+
+            <div className="space-y-3">
+              <Label>Preferred Contact Method</Label>
+              <RadioGroup
+                value={formData.preferredContact}
+                onValueChange={(value) => updateFormData("preferredContact", value)}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="email" id="email-contact" />
+                  <Label htmlFor="email-contact">Email</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="phone" id="phone-contact" />
+                  <Label htmlFor="phone-contact">Phone Call</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="video" id="video-contact" />
+                  <Label htmlFor="video-contact">Video Call</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <Alert>
+              <CheckCircle className="h-4 w-4" />
+              <AlertDescription>
+                We'll review your request and get back to you within 24 hours with a detailed proposal and timeline.
+              </AlertDescription>
+            </Alert>
+          </div>
+        )
+
+      default:
+        return null
+    }
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-8">
+      {/* Progress Header */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">Custom Funnel Request</h2>
+          <Badge variant="outline">
+            Step {currentStep} of {steps.length}
+          </Badge>
+        </div>
+
+        <Progress value={progress} className="h-2" />
+
+        <div className="flex items-center justify-between text-sm">
+          {steps.map((step) => (
+            <div
+              key={step.id}
+              className={`flex items-center gap-2 ${
+                step.id === currentStep
+                  ? "text-primary font-medium"
+                  : step.id < currentStep
+                    ? "text-green-600"
+                    : "text-muted-foreground"
+              }`}
+            >
+              <div
+                className={`h-6 w-6 rounded-full flex items-center justify-center text-xs ${
+                  step.id === currentStep
+                    ? "bg-primary text-primary-foreground"
+                    : step.id < currentStep
+                      ? "bg-green-600 text-white"
+                      : "bg-muted"
+                }`}
+              >
+                {step.id < currentStep ? <CheckCircle className="h-3 w-3" /> : step.id}
+              </div>
+              <span className="hidden sm:inline">{step.title}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Form Content */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{steps[currentStep - 1].title}</CardTitle>
+          <CardDescription>{steps[currentStep - 1].description}</CardDescription>
+        </CardHeader>
+        <CardContent>{renderStep()}</CardContent>
+      </Card>
+
+      {/* Navigation */}
+      <div className="flex items-center justify-between">
+        <Button variant="outline" onClick={prevStep} disabled={currentStep === 1} className="bg-transparent">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Previous
+        </Button>
+
+        {currentStep < steps.length ? (
+          <Button onClick={nextStep}>
+            Next
+            <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
+        ) : (
+          <Button onClick={handleSubmit} disabled={loading}>
+            {loading ? "Submitting..." : "Submit Request"}
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}

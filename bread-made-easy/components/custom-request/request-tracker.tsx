@@ -1,0 +1,175 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
+import { Separator } from "@/components/ui/separator"
+import { adminService } from "@/lib/admin-service"
+import type { CustomRequest } from "@/lib/types"
+import { formatDistanceToNow } from "date-fns"
+import { Clock, MessageSquare, CheckCircle, AlertCircle, Calendar, DollarSign } from "lucide-react"
+
+interface RequestTrackerProps {
+  userId: string
+}
+
+export function RequestTracker({ userId }: RequestTrackerProps) {
+  const [requests, setRequests] = useState<CustomRequest[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        // In a real app, this would filter by userId
+        const requestsData = await adminService.getCustomRequests()
+        setRequests(requestsData.filter((req) => req.buyerId === userId))
+      } catch (error) {
+        console.error("Failed to fetch requests:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchRequests()
+  }, [userId])
+
+  const getStatusIcon = (status: CustomRequest["status"]) => {
+    switch (status) {
+      case "open":
+        return <AlertCircle className="h-4 w-4 text-orange-500" />
+      case "in_progress":
+        return <Clock className="h-4 w-4 text-blue-500" />
+      case "completed":
+        return <CheckCircle className="h-4 w-4 text-green-500" />
+      case "cancelled":
+        return <AlertCircle className="h-4 w-4 text-red-500" />
+      default:
+        return <Clock className="h-4 w-4 text-gray-500" />
+    }
+  }
+
+  const getStatusProgress = (status: CustomRequest["status"]) => {
+    switch (status) {
+      case "open":
+        return 25
+      case "in_progress":
+        return 60
+      case "completed":
+        return 100
+      case "cancelled":
+        return 0
+      default:
+        return 0
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2].map((i) => (
+          <div key={i} className="animate-pulse">
+            <div className="h-48 bg-muted rounded"></div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (requests.length === 0) {
+    return (
+      <Card>
+        <CardContent className="pt-6 text-center">
+          <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="font-semibold mb-2">No Custom Requests</h3>
+          <p className="text-muted-foreground mb-4">You haven't submitted any custom funnel requests yet.</p>
+          <Button asChild>
+            <a href="/custom-request">Submit a Request</a>
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {requests.map((request) => (
+        <Card key={request.id}>
+          <CardHeader>
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <CardTitle className="text-lg">{request.title}</CardTitle>
+                <CardDescription className="line-clamp-2">{request.description}</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                {getStatusIcon(request.status)}
+                <Badge
+                  variant={
+                    request.status === "completed"
+                      ? "default"
+                      : request.status === "in_progress"
+                        ? "secondary"
+                        : request.status === "cancelled"
+                          ? "destructive"
+                          : "outline"
+                  }
+                >
+                  {request.status.replace("_", " ")}
+                </Badge>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span>Progress</span>
+                <span>{getStatusProgress(request.status)}%</span>
+              </div>
+              <Progress value={getStatusProgress(request.status)} className="h-2" />
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Budget</p>
+                  <p className="font-semibold">${request.budget}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Deadline</p>
+                  <p className="font-semibold">
+                    {request.deadline ? request.deadline.toLocaleDateString() : "Flexible"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Submitted</p>
+                  <p className="font-semibold">{formatDistanceToNow(request.createdAt, { addSuffix: true })}</p>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">Request ID: {request.id}</div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="bg-transparent">
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Contact Team
+                </Button>
+                {request.status === "completed" && <Button size="sm">Download Files</Button>}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+}
