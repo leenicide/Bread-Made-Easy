@@ -190,7 +190,7 @@ export default function BidConfirmationPage() {
           </Card>
 
           {/* Urgency Reminder */}
-          <Card className="border-destructive/20 bg-destructive/5 mb-12">
+          <Card className="border-destructive/20 bg-destructive/5">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Clock className="h-5 w-5 text-destructive" />

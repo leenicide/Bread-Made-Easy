@@ -81,6 +81,7 @@ export default function AuctionsPage() {
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {mockAuctions.map((auction) => (
+            <Link href={`/auctions/${auction.id}`}>
             <Card key={auction.id} className="overflow-hidden">
               <div className="aspect-video bg-muted">
                 <img
@@ -123,18 +124,10 @@ export default function AuctionsPage() {
                       Starting: ${auction.startingPrice}
                     </div>
                   </div>
-
-                  <div className="flex gap-2">
-                    <Button className="flex-1" asChild>
-                      <Link href={`/auctions/${auction.id}`}>View Auction</Link>
-                    </Button>
-                    <Button variant="outline" className="flex-1 bg-transparent" asChild>
-                      <Link href={`/auctions/${auction.id}`}>Buy Now</Link>
-                    </Button>
-                  </div>
                 </div>
               </CardContent>
             </Card>
+            </Link>
           ))}
         </div>
       </main>
