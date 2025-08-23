@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAuth } from "@/contexts/auth-context"
 import { auctionService } from "@/lib/auction-service"
 import type { Auction } from "@/lib/types"
-import { Gavel, Zap } from "lucide-react"
+import { Gavel, Zap, TrendingUp, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 interface BidFormProps {
@@ -47,9 +47,14 @@ export function BidForm({ auction, onBidPlaced, onBuyNow }: BidFormProps) {
       const response = await auctionService.placeBid(auction.id, user.id, amount)
 
       if (response.success && response.auction) {
-        setSuccess(`Bid placed successfully! You are now the highest bidder.`)
+        setSuccess(`Bid placed successfully!`)
         setBidAmount("")
         onBidPlaced?.(response.auction)
+        
+        // Redirect to post-bid page after a brief delay
+        setTimeout(() => {
+          router.push(`/post-bid/${auction.id}`)
+        }, 1500)
       } else {
         setError(response.error || "Failed to place bid")
       }
@@ -62,8 +67,17 @@ export function BidForm({ auction, onBidPlaced, onBuyNow }: BidFormProps) {
 
   const handleBuyNow = async () => {
     if (!user || !auction.buyNowPrice) return
-
     router.push(`/checkout?auctionId=${auction.id}&type=buy_now&amount=${auction.buyNowPrice}`)
+  }
+
+  const handleLease = async () => {
+    if (!user) return
+    router.push(`/lease?auctionId=${auction.id}`)
+  }
+
+  const handleMakeOffer = async () => {
+    if (!user) return
+    router.push(`/auctions/${auction.id}/make-offer`)
   }
 
   if (!user) {
@@ -116,8 +130,17 @@ export function BidForm({ auction, onBidPlaced, onBuyNow }: BidFormProps) {
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
-            <Gavel className="h-4 w-4 mr-2" />
-            {loading ? "Placing Bid..." : "Place Bid"}
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Placing Bid...
+              </>
+            ) : (
+              <>
+                <Gavel className="h-4 w-4 mr-2" />
+                Place Bid
+              </>
+            )}
           </Button>
         </form>
 
@@ -135,13 +158,48 @@ export function BidForm({ auction, onBidPlaced, onBuyNow }: BidFormProps) {
             <div className="text-center space-y-2">
               <p className="text-sm text-muted-foreground">Skip the bidding</p>
               <p className="text-xl font-semibold">${auction.buyNowPrice}</p>
-              <Button onClick={handleBuyNow} variant="outline" className="w-full bg-transparent" disabled={loading}>
+              <Button onClick={handleBuyNow} variant="outline" className="w-full" disabled={loading}>
                 <Zap className="h-4 w-4 mr-2" />
                 {loading ? "Processing..." : "Buy Now"}
               </Button>
             </div>
           </>
         )}
+
+        {/* Make an Offer Option */}
+        {/* <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">or</span>
+          </div>
+        </div>
+
+        <div className="text-center space-y-2">
+          <p className="text-sm text-muted-foreground">Make us an offer to end the auction early</p>
+          <Button onClick={handleMakeOffer} variant="outline" className="w-full" disabled={loading}>
+            {loading ? "Processing..." : "Make an Offer"}
+          </Button>
+        </div> */}
+
+        {/* Lease Option */}
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">or</span>
+          </div>
+        </div>
+
+        <div className="text-center space-y-2">
+          <p className="text-sm text-muted-foreground">Low upfront cost, recurring model</p>
+          <Button onClick={handleLease} variant="outline" className="w-full" disabled={loading}>
+            <TrendingUp className="h-4 w-4 mr-2" />
+            {loading ? "Processing..." : "Lease This Funnel"}
+          </Button>
+        </div>
       </div>
     </div>
   )
