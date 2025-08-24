@@ -56,6 +56,7 @@ export interface Auction {
   starting_price: number
   reserve_price?: number
   current_price?: number
+  buy_now?: number
   winning_bid_id?: string
   starts_at: Date
   ends_at: Date

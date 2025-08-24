@@ -19,6 +19,7 @@ export default function AdminAuctionsPage() {
     const fetchAuctions = async () => {
       try {
         const auctionsData = await auctionService.getAuctions()
+        console.log("First auction object:", auctionsData[0]) // Inspect the structure
         setAuctions(auctionsData)
       } catch (error) {
         console.error("Failed to fetch auctions:", error)
@@ -26,11 +27,12 @@ export default function AdminAuctionsPage() {
         setLoading(false)
       }
     }
-
     fetchAuctions()
   }, [])
 
-  const filteredAuctions = auctions.filter((auction) => auction.title.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredAuctions = auctions.filter((auction) => 
+    auction.title?.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
   if (loading) {
     return (
@@ -81,10 +83,14 @@ export default function AdminAuctionsPage() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
-                    <CardTitle className="text-lg">{auction.title}</CardTitle>
-                    <CardDescription className="line-clamp-2">{auction.description}</CardDescription>
+                    <CardTitle className="text-lg">{auction.title || "Untitled Auction"}</CardTitle>
+                    <CardDescription className="line-clamp-2">
+                      {auction.description || "No description available"}
+                    </CardDescription>
                     <div className="flex items-center gap-2">
-                      <Badge variant="secondary">{auction.category}</Badge>
+                      {auction.category && (
+                        <Badge variant="secondary">{auction.category.toString()}</Badge>
+                      )}
                       <Badge
                         variant={
                           auction.status === "active"
@@ -100,8 +106,8 @@ export default function AdminAuctionsPage() {
                   </div>
                   <div className="aspect-video w-32 bg-muted rounded overflow-hidden">
                     <img
-                      src={auction.imageUrl || "/placeholder.svg"}
-                      alt={auction.title}
+                      src="/placeholder.svg"
+                      alt={auction.title || "Auction image"}
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -111,19 +117,21 @@ export default function AdminAuctionsPage() {
                 <div className="grid md:grid-cols-4 gap-4 mb-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Current Price</p>
-                    <p className="font-semibold">${auction.currentPrice}</p>
+                    <p className="font-semibold">${auction.current_price}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Starting Price</p>
-                    <p className="font-semibold">${auction.startingPrice}</p>
+                    <p className="font-semibold">${auction.starting_price}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Buy Now Price</p>
-                    <p className="font-semibold">${auction.buyNowPrice || "N/A"}</p>
+                    <p className="font-semibold">${auction.buy_now || "N/A"}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Ends</p>
-                    <p className="font-semibold">{auction.endTime.toLocaleDateString()}</p>
+                    <p className="font-semibold">
+                      {auction.ends_at ? new Date(auction.ends_at).toLocaleDateString() : "N/A"}
+                    </p>
                   </div>
                 </div>
 
