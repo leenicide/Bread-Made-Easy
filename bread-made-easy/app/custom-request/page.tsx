@@ -1,19 +1,62 @@
+'use client'
+
 import { Header } from "@/components/header"
-import { EnhancedRequestForm } from "@/components/custom-request/enhanced-request-form"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Lightbulb, Clock, Users, CheckCircle, Star, MessageSquare, Crown, Target, Scale, Gem, Calendar } from "lucide-react"
+import { Lightbulb, Clock, Users, CheckCircle, Star, MessageSquare, Crown, Target, Scale, Gem, Calendar, ArrowRight, Hammer, Search } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { CustomRequestModal } from "@/components/custom-request/custom-request-modal"
+import { useState } from "react"
+import Link from "next/link"
 
 export default function CustomRequestPage() {
+  const [modalOpen, setModalOpen] = useState(false)
+
   return (
     <div className="min-h-screen">
       <Header />
       <main className="container mx-auto py-8 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h1 className="text-3xl font-bold mb-4">Your Business. Your Oven. Built From Scratch.</h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center mb-4">
+              <Crown className="h-8 w-8 text-primary mr-2" />
+              <h1 className="text-3xl font-bold">Your Business. Your Oven. Built From Scratch.</h1>
+            </div>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
               Not all Wealth Ovens are created equal. Some are engineered exclusively for one business — yours.
             </p>
+            {/* <Button size="lg" onClick={() => setModalOpen(true)}>
+              Request Your Custom Build
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button> */}
+          </div>
+
+          <div className="text-center mb-8">
+            <Button size="lg" onClick={() => setModalOpen(true)}>
+              Apply for a Custom Build
+              <Crown className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
+
+          {/* Alternative Option: Auction Flow */}
+          <div className="mb-16 p-6 bg-muted/50 rounded-lg border">
+            <div className="flex items-center justify-center mb-4">
+              <Hammer className="h-6 w-6 text-primary mr-2" />
+              <h2 className="text-xl font-semibold">Looking for a more accessible option?</h2>
+            </div>
+            <p className="text-center text-muted-foreground mb-4 max-w-2xl mx-auto">
+              Participate in our weekly auctions to acquire pre-built Wealth Ovens at competitive prices.
+            </p>
+            <div className="flex flex-col gap-4 justify-center items-center">
+              <div className="text-sm text-center text-muted-foreground">
+                • Ready-to-use solutions • Lower investment • Quick deployment •
+              </div>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/auctions">
+                  Explore Auctions
+                  <Search className="h-4 w-4 ml-2" />
+                </Link>
+              </Button>
+            </div>
           </div>
 
           {/* Why Choose a Custom Build */}
@@ -88,8 +131,8 @@ export default function CustomRequestPage() {
           </div>
 
           {/* Exclusivity + Scarcity */}
-          <div className="mb-16 text-center">
-            <div className="flex items-center justify-center mb-8">
+          <div className="mb-8 text-center">
+            <div className="flex items-center justify-center mb-6">
               <Calendar className="h-8 w-8 text-primary mr-3" />
               <h2 className="text-3xl font-bold">Exclusivity + Scarcity</h2>
             </div>
@@ -99,103 +142,87 @@ export default function CustomRequestPage() {
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
-              <EnhancedRequestForm />
-            </div>
+          <div className="grid lg:grid-cols-2 gap-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  What's Included
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm">Complete custom Wealth Oven design and development</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm">Private strategy sessions with our team</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm">Mobile-responsive design</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm">Source code and documentation</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm">Unlimited revisions during design phase</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm">90-day support after delivery</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm">Performance optimization and analytics</span>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
 
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    What's Included
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-3">
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">Complete custom Wealth Oven design and development</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">Private strategy sessions with our team</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">Mobile-responsive design</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">Source code and documentation</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">Unlimited revisions during design phase</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">90-day support after delivery</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">Performance optimization and analytics</span>
-                    </li>
-                  </ul>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <MessageSquare className="h-5 w-5" />
-                    Client Testimonials
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="border-l-2 border-primary/20 pl-4">
-                      <div className="flex items-center gap-1 mb-1">
-                        {[1, 2, 3, 4, 5].map((i) => (
-                          <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                        ))}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        "The custom Wealth Oven transformed our business. We're seeing 5x ROI within the first quarter."
-                      </p>
-                      <p className="text-xs font-medium mt-1">- Michael T., E-commerce Owner</p>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5" />
+                  Client Testimonials
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="border-l-2 border-primary/20 pl-4">
+                    <div className="flex items-center gap-1 mb-1">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                      ))}
                     </div>
-                    <div className="border-l-2 border-primary/20 pl-4">
-                      <div className="flex items-center gap-1 mb-1">
-                        {[1, 2, 3, 4, 5].map((i) => (
-                          <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                        ))}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        "Worth every penny. The strategic approach and custom build delivered exactly what we needed."
-                      </p>
-                      <p className="text-xs font-medium mt-1">- Jessica L., SaaS Founder</p>
-                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      "The custom Wealth Oven transformed our business. We're seeing 5x ROI within the first quarter."
+                    </p>
+                    <p className="text-xs font-medium mt-1">- Michael T., E-commerce Owner</p>
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-primary/5 border-primary/20">
-                <CardHeader>
-                  <CardTitle className="text-primary">Limited Availability</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    We only accept a handful of custom builds each quarter. If accepted, you'll join an exclusive circle 
-                    of Wealth Oven owners with systems that can't be duplicated.
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+                  <div className="border-l-2 border-primary/20 pl-4">
+                    <div className="flex items-center gap-1 mb-1">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      "Worth every penny. The strategic approach and custom build delivered exactly what we needed."
+                    </p>
+                    <p className="text-xs font-medium mt-1">- Jessica L., SaaS Founder</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </main>
+
+      <CustomRequestModal open={modalOpen} onOpenChange={setModalOpen} />
     </div>
   )
 }

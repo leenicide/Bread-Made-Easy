@@ -39,6 +39,12 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
       icon: Gavel,
       permission: "canViewAllAuctions"
     },
+     {
+      name: "Funnels",
+      href: "/admin/funnels",
+      icon: Gavel,
+      permission: "canViewAllFunnels"
+    },
     {
       name: "Users",
       href: "/admin/users",
