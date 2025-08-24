@@ -1,5 +1,4 @@
 import type { Purchase } from "./types"
-import { databaseService } from "./database"
 
 // Mock Stripe integration for development
 export interface PaymentIntent {
@@ -18,8 +17,9 @@ export interface PaymentResponse {
   error?: string
 }
 
-// Mock payment intents storage (keeping this for Stripe simulation)
+// Mock payment intents storage
 const mockPaymentIntents: PaymentIntent[] = []
+const mockPurchases: Purchase[] = []
 
 export const paymentService = {
   async createPaymentIntent(
@@ -59,19 +59,20 @@ export const paymentService = {
     if (isSuccess) {
       paymentIntent.status = "succeeded"
 
-      // Create purchase record in database
-      const purchase = await databaseService.createPurchase({
+      // Create purchase record
+      const purchase: Purchase = {
+        id: `purchase_${Date.now()}`,
         buyerId: paymentIntent.metadata.buyerId || "unknown",
         auctionId: paymentIntent.metadata.auctionId,
         type: paymentIntent.metadata.type as "auction_win" | "buy_now" | "direct_sale",
         amount: paymentIntent.amount / 100, // Convert back from cents
         status: "completed",
         stripePaymentIntentId: paymentIntent.id,
-      })
-
-      if (!purchase) {
-        return { success: false, error: "Failed to create purchase record" }
+        createdAt: new Date(),
+        updatedAt: new Date(),
       }
+
+      mockPurchases.push(purchase)
 
       return { success: true, paymentIntent, purchase }
     } else {
@@ -81,13 +82,13 @@ export const paymentService = {
   },
 
   async getPurchase(purchaseId: string): Promise<Purchase | null> {
-    // This would need to be implemented in database service
-    // For now, return null as we don't have a getPurchaseById method
-    return null
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    return mockPurchases.find((p) => p.id === purchaseId) || null
   },
 
   async getPurchasesByUser(userId: string): Promise<Purchase[]> {
-    return await databaseService.getPurchasesByUser(userId)
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    return mockPurchases.filter((p) => p.buyerId === userId)
   },
 
   async refundPayment(paymentIntentId: string): Promise<PaymentResponse> {
@@ -98,8 +99,12 @@ export const paymentService = {
       return { success: false, error: "Payment intent not found" }
     }
 
-    // In a real implementation, you would update the purchase status in the database
-    // For now, we'll just return success
-    return { success: true, paymentIntent }
+    const purchase = mockPurchases.find((p) => p.stripePaymentIntentId === paymentIntentId)
+    if (purchase) {
+      purchase.status = "refunded"
+      purchase.updatedAt = new Date()
+    }
+
+    return { success: true, paymentIntent, purchase }
   },
 }

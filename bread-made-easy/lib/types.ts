@@ -69,10 +69,3 @@ export interface Lead {
   createdAt: Date
   updatedAt: Date
 }
-
-export interface BidResponse {
-  success: boolean
-  bid?: Bid
-  auction?: Auction
-  error?: string
-}
