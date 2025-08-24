@@ -109,7 +109,7 @@ export class DatabaseService {
       .single()
 
     if (error) {
-      console.error('Error creating auction:', error)
+      console.error("Error creating auction:", error.message, error.details, error.hint)
       return null
     }
 

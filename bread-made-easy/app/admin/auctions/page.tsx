@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function AdminAuctionsPage() {
   const [auctions, setAuctions] = useState<Auction[]>([])
@@ -26,12 +27,22 @@ export default function AdminAuctionsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [editingAuction, setEditingAuction] = useState<Auction | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     starting_price: 0,
     buy_now: 0,
     ends_at: "",
+  })
+  const [createFormData, setCreateFormData] = useState({
+    title: "",
+    description: "",
+    starting_price: 0,
+    buy_now: 0,
+    ends_at: "",
+    status: "active" as "active" | "draft" | "ended",
+    funnel_id: "",
   })
 
   useEffect(() => {
@@ -82,11 +93,55 @@ export default function AdminAuctionsPage() {
     }
   }
 
+  const handleCreateClick = async () => {
+    try {
+      // Convert the form data to match the Auction type
+      const createData = {
+        ...createFormData,
+        ends_at: createFormData.ends_at ? new Date(createFormData.ends_at) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default to 7 days from now if not provided
+        starts_at: new Date(), // Set start time to now
+      }
+      
+      const newAuction = await auctionService.createAuction(createData)
+      if (newAuction) {
+        setAuctions([...auctions, newAuction])
+        setIsCreateDialogOpen(false)
+        // Reset form
+        setCreateFormData({
+          title: "",
+          description: "",
+          starting_price: 0,
+          buy_now: 0,
+          ends_at: "",
+          status: "active",
+          funnel_id: "",
+        })
+      }
+    } catch (error) {
+      console.error("Failed to create auction:", error)
+    }
+  }
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
       [name]: name.includes('price') || name.includes('buy_now') ? Number(value) : value
+    }))
+  }
+
+  const handleCreateInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setCreateFormData(prev => ({
+      ...prev,
+      [name]: name.includes('price') || name.includes('buy_now') ? Number(value) : value
+    }))
+  }
+
+  const handleSelectChange = (name: string, value: string) => {
+    setCreateFormData(prev => ({
+      ...prev,
+      [name]: value
     }))
   }
 
@@ -119,7 +174,7 @@ export default function AdminAuctionsPage() {
             <h1 className="text-3xl font-bold">Auctions</h1>
             <p className="text-muted-foreground">Manage your marketplace auctions</p>
           </div>
-          <Button>
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Create Auction
           </Button>
@@ -263,7 +318,7 @@ export default function AdminAuctionsPage() {
                 </Label>
                 <Input
                   id="starting_price"
-                  name="starting_price"
+                  name="start_price"
                   type="number"
                   value={formData.starting_price}
                   onChange={handleInputChange}
@@ -305,6 +360,124 @@ export default function AdminAuctionsPage() {
               <Button onClick={handleSaveClick}>
                 <Save className="h-4 w-4 mr-2" />
                 Save Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Create Dialog */}
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Create New Auction</DialogTitle>
+              <DialogDescription>
+                Fill in the details for your new auction. Click create when you're done.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="create-title" className="text-right">
+                  Title
+                </Label>
+                <Input
+                  id="create-title"
+                  name="title"
+                  value={createFormData.title}
+                  onChange={handleCreateInputChange}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="create-description" className="text-right">
+                  Description
+                </Label>
+                <Textarea
+                  id="create-description"
+                  name="description"
+                  value={createFormData.description}
+                  onChange={handleCreateInputChange}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="create-starting_price" className="text-right">
+                  Starting Price
+                </Label>
+                <Input
+                  id="create-starting_price"
+                  name="starting_price"
+                  type="number"
+                  value={createFormData.starting_price}
+                  onChange={handleCreateInputChange}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="create-buy_now" className="text-right">
+                  Buy Now Price
+                </Label>
+                <Input
+                  id="create-buy_now"
+                  name="buy_now"
+                  type="number"
+                  value={createFormData.buy_now}
+                  onChange={handleCreateInputChange}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="create-ends_at" className="text-right">
+                  End Date & Time
+                </Label>
+                <Input
+                  id="create-ends_at"
+                  name="ends_at"
+                  type="datetime-local"
+                  value={createFormData.ends_at}
+                  onChange={handleCreateInputChange}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="create-status" className="text-right">
+                  Status
+                </Label>
+                <Select
+                  value={createFormData.status}
+                  onValueChange={(value) => handleSelectChange("status", value)}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="ended">Ended</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="create-funnel_id" className="text-right">
+                  Funnel ID
+                </Label>
+                <Input
+                  id="create-funnel_id"
+                  name="funnel_id"
+                  value={createFormData.funnel_id}
+                  onChange={handleCreateInputChange}
+                  className="col-span-3"
+                  placeholder="Enter funnel ID"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+              <Button onClick={handleCreateClick}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Auction
               </Button>
             </DialogFooter>
           </DialogContent>
