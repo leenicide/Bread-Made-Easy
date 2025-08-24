@@ -1,10 +1,6 @@
 'use client'; // ensure this only runs in the browser (Next.js)
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from './supabase-client';
 import type { User, UserRole } from "./types"
-
-// Initialize Supabase client
-const supabaseUrl = 'https://oedkzwoxhvitsbarbnck.supabase.co';
-const supabaseAnonKey =   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9lZGt6d294aHZpdHNiYXJibmNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU3NzQ5MzksImV4cCI6MjA3MTM1MDkzOX0.Ypmq463kK0Iwq1mYWfqrxzTv-qoPBSxzWV-zE8XOZlk';
 
 
 // Safe console logging function
@@ -20,13 +16,6 @@ const safeLog = {
     }
   }
 };
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  safeLog.error('Missing Supabase environment variables');
-  throw new Error('Missing Supabase environment variables');
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export interface AuthResponse {
   success: boolean

@@ -3,7 +3,8 @@
 import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
 import type { User } from "@/lib/types"
-import { authService, type AuthResponse, supabase } from "@/lib/auth" // Import supabase from auth
+import { authService, type AuthResponse } from "@/lib/auth" 
+import {supabase} from "@/lib/supabase-client"
 
 interface AuthContextType {
   user: User | null

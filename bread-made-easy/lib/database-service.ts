@@ -1,4 +1,4 @@
-import { supabase } from './auth'
+import {supabase} from "@/lib/supabase-client"
 import type { 
   Auction, 
   Bid, 
