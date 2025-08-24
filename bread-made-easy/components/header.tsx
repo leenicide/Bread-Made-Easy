@@ -49,9 +49,9 @@ export function Header() {
           <Link href="/auctions" className="text-sm font-medium hover:text-primary transition-colors">
             Auctions
           </Link>
-          <Link href="/buy-now" className="text-sm font-medium hover:text-primary transition-colors">
+          {/* <Link href="/buy-now" className="text-sm font-medium hover:text-primary transition-colors">
             Buy Now
-          </Link>
+          </Link> */}
           <Link href="/custom-request" className="text-sm font-medium hover:text-primary transition-colors">
             Custom Request
           </Link>
