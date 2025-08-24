@@ -55,12 +55,12 @@ export function Header() {
           </div>
 
           {/* Logo - left aligned with specific spacing */}
-          <Link href="/" className="flex items-center gap-2 md:ml-4 lg:ml-6">
+          <div className="flex items-center gap-2 md:ml-4 lg:ml-6">
             <div className="h-8 w-8 rounded bg-primary flex items-center justify-center">
               <span className="text-primary-foreground font-bold text-sm">B</span>
             </div>
             <span className="font-bold text-xl hidden sm:block">Bread Made Easy</span>
-          </Link>
+          </div>
 
           {/* Centered navigation for desktop - Empty for now */}
           <nav className="hidden md:flex items-center gap-8 mx-8">
