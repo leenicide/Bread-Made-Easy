@@ -4,99 +4,159 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { BarChart3, Gavel, Users, ShoppingCart, MessageSquare, UserCheck, Settings, Home, LogOut } from "lucide-react"
-import { useAuth } from "@/contexts/auth-context"
+import { Badge } from "@/components/ui/badge"
+import { 
+  LayoutDashboard, 
+  Gavel, 
+  Users, 
+  FileText, 
+  DollarSign, 
+  Settings,
+  LogOut,
+  User,
+  Shield
+} from "lucide-react"
+import { authService } from "@/lib/auth"
+import type { User } from "@/lib/types"
 
-const adminNavItems = [
-  {
-    title: "Dashboard",
-    href: "/admin",
-    icon: BarChart3,
-  },
-  {
-    title: "Auctions",
-    href: "/admin/auctions",
-    icon: Gavel,
-  },
-  {
-    title: "Users",
-    href: "/admin/users",
-    icon: Users,
-  },
-  {
-    title: "Purchases",
-    href: "/admin/purchases",
-    icon: ShoppingCart,
-  },
-  {
-    title: "Custom Requests",
-    href: "/admin/requests",
-    icon: MessageSquare,
-  },
-  {
-    title: "Leads",
-    href: "/admin/leads",
-    icon: UserCheck,
-  },
-  {
-    title: "Settings",
-    href: "/admin/settings",
-    icon: Settings,
-  },
-]
+interface AdminSidebarProps {
+  user: User
+}
 
-export function AdminSidebar() {
+export function AdminSidebar({ user }: AdminSidebarProps) {
   const pathname = usePathname()
-  const { logout } = useAuth()
+
+  const navigation = [
+    {
+      name: "Dashboard",
+      href: "/admin",
+      icon: LayoutDashboard,
+      permission: "canAccessAdminPanel"
+    },
+    {
+      name: "Auctions",
+      href: "/admin/auctions",
+      icon: Gavel,
+      permission: "canViewAllAuctions"
+    },
+    {
+      name: "Users",
+      href: "/admin/users",
+      icon: Users,
+      permission: "canViewAllUsers"
+    },
+    {
+      name: "Leads",
+      href: "/admin/leads",
+      icon: FileText,
+      permission: "canViewAllLeads"
+    },
+    {
+      name: "Custom Requests",
+      href: "/admin/requests",
+      icon: FileText,
+      permission: "canViewAllCustomRequests"
+    },
+    {
+      name: "Purchases",
+      href: "/admin/purchases",
+      icon: DollarSign,
+      permission: "canViewAllPurchases"
+    },
+    {
+      name: "Analytics",
+      href: "/admin/analytics",
+      icon: LayoutDashboard,
+      permission: "canViewAnalytics"
+    },
+    {
+      name: "Settings",
+      href: "/admin/settings",
+      icon: Settings,
+      permission: "canAccessAdminPanel"
+    },
+  ]
 
   const handleLogout = async () => {
-    await logout()
-    window.location.href = "/"
+    await authService.logout()
+    window.location.href = '/login'
   }
 
+  const filteredNavigation = navigation.filter(item => 
+    authService.hasPermission(user, item.permission as any)
+  )
+
   return (
-    <div className="flex h-full w-64 flex-col bg-card border-r">
-      <div className="flex h-16 items-center border-b px-6">
-        <Link href="/admin" className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">B</span>
+    <div className="w-64 bg-white border-r border-gray-200 min-h-screen">
+      <div className="p-6">
+        <div className="flex items-center space-x-3 mb-6">
+          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+            <Shield className="w-6 h-6 text-white" />
           </div>
-          <span className="font-bold text-lg">Admin Panel</span>
-        </Link>
-      </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Admin Panel</h1>
+            <p className="text-sm text-gray-500">Bread Made Easy</p>
+          </div>
+        </div>
 
-      <nav className="flex-1 space-y-1 p-4">
-        {adminNavItems.map((item) => {
-          const isActive = pathname === item.href
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-            >
-              <item.icon className="h-4 w-4" />
-              {item.title}
-            </Link>
-          )
-        })}
-      </nav>
+        {/* User Info */}
+        <div className="bg-gray-50 rounded-lg p-4 mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+              <User className="w-5 h-5 text-gray-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {user.display_name || user.email}
+              </p>
+              <div className="flex items-center space-x-2">
+                <Badge 
+                  variant={user.role === 'admin' ? 'default' : 'secondary'}
+                  className="text-xs"
+                >
+                  {user.role === 'admin' ? 'Administrator' : 'User'}
+                </Badge>
+                <span className="text-xs text-gray-500">
+                  {user.email}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
 
-      <div className="border-t p-4 space-y-2">
-        <Button variant="ghost" className="w-full justify-start" asChild>
-          <Link href="/">
-            <Home className="h-4 w-4 mr-3" />
-            Back to Site
-          </Link>
-        </Button>
-        <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>
-          <LogOut className="h-4 w-4 mr-3" />
-          Logout
-        </Button>
+        {/* Navigation */}
+        <nav className="space-y-2">
+          {filteredNavigation.map((item) => {
+            const isActive = pathname === item.href
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={cn(
+                  "flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                  isActive
+                    ? "bg-blue-100 text-blue-700"
+                    : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                )}
+              >
+                <item.icon className="w-5 h-5" />
+                <span>{item.name}</span>
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* Logout Button */}
+        <div className="mt-8 pt-6 border-t border-gray-200">
+          <Button
+            variant="outline"
+            onClick={handleLogout}
+            className="w-full justify-start"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Logout
+          </Button>
+        </div>
       </div>
     </div>
   )

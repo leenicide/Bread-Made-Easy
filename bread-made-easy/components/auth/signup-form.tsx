@@ -1,47 +1,40 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useAuth } from "@/contexts/auth-context"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
+import { Loader2, AlertCircle, CheckCircle } from "lucide-react"
+import { authService } from "@/lib/auth"
+import type { UserRole } from "@/lib/types"
 
 export function SignupForm() {
-  const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [error, setError] = useState("")
+  const [name, setName] = useState("")
+  const [role, setRole] = useState<UserRole>("user")
   const [loading, setLoading] = useState(false)
-  const { signup } = useAuth()
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState(false)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setLoading(true)
     setError("")
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match")
-      return
-    }
-
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters")
-      return
-    }
-
-    setLoading(true)
-
     try {
-      const response = await signup(email, password, name)
+      const response = await authService.signup(email, password, name, role)
+      
       if (response.success) {
-        router.push("/dashboard")
+        setSuccess(true)
+        setTimeout(() => {
+          router.push("/dashboard")
+        }, 2000)
       } else {
         setError(response.error || "Signup failed")
       }
@@ -52,16 +45,36 @@ export function SignupForm() {
     }
   }
 
+  if (success) {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <CardContent className="pt-6">
+          <div className="text-center">
+            <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Account Created!</h2>
+            <p className="text-gray-600 mb-4">
+              Your account has been created successfully. Redirecting to dashboard...
+            </p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full max-w-md mx-auto">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">Create Account</CardTitle>
-        <CardDescription>Join Bread Made Easy and start building your business</CardDescription>
+        <CardDescription>
+          Join Bread Made Easy to start bidding on funnels
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
@@ -71,10 +84,10 @@ export function SignupForm() {
             <Input
               id="name"
               type="text"
+              placeholder="Enter your full name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              placeholder="Enter your full name"
             />
           </div>
 
@@ -83,10 +96,10 @@ export function SignupForm() {
             <Input
               id="email"
               type="email"
+              placeholder="Enter your email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              placeholder="Enter your email"
             />
           </div>
 
@@ -95,36 +108,70 @@ export function SignupForm() {
             <Input
               id="password"
               type="password"
+              placeholder="Create a password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              placeholder="Create a password"
+              minLength={6}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              placeholder="Confirm your password"
-            />
+            <Label htmlFor="role">Account Type</Label>
+            <Select value={role} onValueChange={(value: UserRole) => setRole(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select account type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="user">
+                  <div className="flex items-center space-x-2">
+                    <span>👤 User</span>
+                    <span className="text-sm text-gray-500">- Bid on auctions, make purchases</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="admin">
+                  <div className="flex items-center space-x-2">
+                    <span>🛡️ Admin</span>
+                    <span className="text-sm text-gray-500">- Full system access</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500">
+              {role === 'admin' 
+                ? 'Admin accounts have full access to manage the system, users, and content.'
+                : 'User accounts can bid on auctions, make purchases, and submit custom requests.'
+              }
+            </p>
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Creating account..." : "Create Account"}
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating Account...
+              </>
+            ) : (
+              'Create Account'
+            )}
           </Button>
-        </form>
 
-        <div className="mt-6 text-center text-sm">
-          <span className="text-muted-foreground">Already have an account? </span>
-          <Link href="/login" className="text-primary hover:underline">
-            Sign in
-          </Link>
-        </div>
+          <div className="text-center text-sm text-gray-600">
+            Already have an account?{" "}
+            <Button
+              type="button"
+              variant="link"
+              className="p-0 h-auto font-semibold"
+              onClick={() => router.push("/login")}
+            >
+              Sign in
+            </Button>
+          </div>
+        </form>
       </CardContent>
     </Card>
   )

@@ -19,7 +19,7 @@ export function BidHistory({ auctionId }: BidHistoryProps) {
   useEffect(() => {
     const fetchBids = async () => {
       try {
-        const bidData = await auctionService.getBidsForAuction(auctionId)
+        const bidData = await auctionService.getBidsByAuction(auctionId)
         setBids(bidData)
       } catch (error) {
         console.error("Failed to fetch bids:", error)
@@ -75,22 +75,24 @@ export function BidHistory({ auctionId }: BidHistoryProps) {
               <div
                 key={bid.id}
                 className={`flex items-center justify-between p-3 rounded-lg border ${
-                  bid.isWinning ? "bg-green-50 border-green-200" : "bg-muted/30"
+                  index === 0 ? "bg-green-50 border-green-200" : "bg-muted/30"
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-xs font-medium">{bid.bidderId.charAt(0).toUpperCase()}</span>
+                    <span className="text-xs font-medium">
+                      {bid.bidder_id?.charAt(0).toUpperCase() || 'U'}
+                    </span>
                   </div>
                   <div>
                     <p className="font-medium">${bid.amount}</p>
                     <p className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(bid.timestamp, { addSuffix: true })}
+                      {formatDistanceToNow(new Date(bid.created_at), { addSuffix: true })}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {bid.isWinning && (
+                  {index === 0 && (
                     <Badge variant="default" className="text-xs">
                       Winning
                     </Badge>

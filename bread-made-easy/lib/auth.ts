@@ -1,6 +1,6 @@
 'use client'; // ensure this only runs in the browser (Next.js)
 import { createClient } from '@supabase/supabase-js'
-import type { User } from "./types"
+import type { User, UserRole } from "./types"
 
 // Initialize Supabase client
 const supabaseUrl = 'https://oedkzwoxhvitsbarbnck.supabase.co';
@@ -33,6 +33,45 @@ export interface AuthResponse {
   user?: User
   error?: string
 }
+
+// Role-based access control
+export const ROLES = {
+  USER: 'user' as const,
+  ADMIN: 'admin' as const,
+} as const;
+
+export type Role = typeof ROLES[keyof typeof ROLES];
+
+// Role permissions
+export const ROLE_PERMISSIONS = {
+  [ROLES.USER]: {
+    canViewAuctions: true,
+    canPlaceBids: true,
+    canMakePurchases: true,
+    canSubmitCustomRequests: true,
+    canViewOwnProfile: true,
+    canEditOwnProfile: true,
+  },
+  [ROLES.ADMIN]: {
+    canViewAuctions: true,
+    canPlaceBids: true,
+    canMakePurchases: true,
+    canSubmitCustomRequests: true,
+    canViewOwnProfile: true,
+    canEditOwnProfile: true,
+    canViewAllUsers: true,
+    canEditAllUsers: true,
+    canViewAllAuctions: true,
+    canEditAllAuctions: true,
+    canViewAllPurchases: true,
+    canViewAllLeads: true,
+    canViewAllCustomRequests: true,
+    canManageCategories: true,
+    canManageTags: true,
+    canViewAnalytics: true,
+    canAccessAdminPanel: true,
+  },
+} as const;
 
 // Supabase authentication functions
 export const authService = {
@@ -70,10 +109,10 @@ export const authService = {
       const user: User = {
         id: data.user.id,
         email: data.user.email!,
-        name: profile.name || data.user.user_metadata?.name || data.user.email!,
-        role: profile.role || 'buyer',
-        createdAt: new Date(profile.created_at || data.user.created_at || Date.now()),
-        updatedAt: new Date(profile.updated_at || data.user.updated_at || Date.now())
+        display_name: profile.display_name || data.user.user_metadata?.name || data.user.email!,
+        role: profile.role || 'user',
+        created_at: new Date(profile.created_at || data.user.created_at || Date.now()),
+        updated_at: new Date(profile.updated_at || data.user.updated_at || Date.now())
       };
 
       // Store user in localStorage for persistence
@@ -88,9 +127,9 @@ export const authService = {
     }
   },
 
-  async signup(email: string, password: string, name: string): Promise<AuthResponse> {
+  async signup(email: string, password: string, name: string, role: UserRole = 'user'): Promise<AuthResponse> {
     try {
-      safeLog.log('Attempting signup with:', { email, name });
+      safeLog.log('Attempting signup with:', { email, name, role });
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -122,9 +161,8 @@ export const authService = {
         .insert([
           {
             id: data.user.id,
-            email: email,
-            name: name,
-            role: 'buyer',
+            display_name: name,
+            role: role,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           }
@@ -135,10 +173,10 @@ export const authService = {
       const user: User = {
         id: data.user.id,
         email: data.user.email!,
-        name: name,
-        role: 'buyer',
-        createdAt: new Date(data.user.created_at || Date.now()),
-        updatedAt: new Date(data.user.updated_at || Date.now())
+        display_name: name,
+        role: role,
+        created_at: new Date(data.user.created_at || Date.now()),
+        updated_at: new Date(data.user.updated_at || Date.now())
       };
 
       // Even if profile insert failed, keep auth success
@@ -199,6 +237,91 @@ export const authService = {
     } catch (error) {
       safeLog.error('Error setting up auth state listener:', error);
       return { data: { subscription: { unsubscribe: () => {} } } };
+    }
+  },
+
+  // Role-based access control methods
+  hasRole(user: User | null, requiredRole: Role | Role[]): boolean {
+    if (!user) return false;
+    
+    if (Array.isArray(requiredRole)) {
+      return requiredRole.includes(user.role as Role);
+    }
+    
+    return user.role === requiredRole;
+  },
+
+  hasPermission(user: User | null, permission: keyof typeof ROLE_PERMISSIONS[Role]): boolean {
+    if (!user) return false;
+    
+    const userRole = user.role as Role;
+    const permissions = ROLE_PERMISSIONS[userRole];
+    
+    if (!permissions) return false;
+    
+    return permissions[permission] || false;
+  },
+
+  isAdmin(user: User | null): boolean {
+    return this.hasRole(user, ROLES.ADMIN);
+  },
+
+  isUser(user: User | null): boolean {
+    return this.hasRole(user, ROLES.USER);
+  },
+
+  // Update user role (admin only)
+  async updateUserRole(userId: string, newRole: UserRole): Promise<boolean> {
+    try {
+      const currentUser = this.getCurrentUser();
+      if (!this.isAdmin(currentUser)) {
+        safeLog.error('Unauthorized role update attempt');
+        return false;
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          role: newRole, 
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', userId);
+
+      if (error) {
+        safeLog.error('Error updating user role:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      safeLog.error('Unexpected error updating user role:', error);
+      return false;
+    }
+  },
+
+  // Get all users (admin only)
+  async getAllUsers(): Promise<User[]> {
+    try {
+      const currentUser = this.getCurrentUser();
+      if (!this.isAdmin(currentUser)) {
+        safeLog.error('Unauthorized access to all users');
+        return [];
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        safeLog.error('Error fetching users:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      safeLog.error('Unexpected error fetching users:', error);
+      return [];
     }
   }
 };

@@ -1,11 +1,15 @@
+'use client'
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Clock, Users, DollarSign } from "lucide-react"
 import Link from "next/link"
+import { auctionService } from "@/lib/auction-service"
+import { useEffect, useState } from "react"
+import type { Auction } from "@/lib/types"
 
-// Mock auction data
+// Mock auction data for fallback
 const mockAuctions = [
   {
     id: "1",
@@ -53,20 +57,75 @@ const mockAuctions = [
 
 function formatTimeRemaining(endTime: Date) {
   const now = new Date()
-  const diff = endTime.getTime() - now.getTime()
+  const timeLeft = endTime.getTime() - now.getTime()
 
-  if (diff <= 0) return "Ended"
+  if (timeLeft <= 0) {
+    return "Ended"
+  }
 
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+  const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60))
 
-  if (days > 0) return `${days}d ${hours}h`
-  if (hours > 0) return `${hours}h ${minutes}m`
-  return `${minutes}m`
+  if (days > 0) {
+    return `${days}d ${hours}h`
+  } else if (hours > 0) {
+    return `${hours}h ${minutes}m`
+  } else {
+    return `${minutes}m`
+  }
 }
 
 export default function AuctionsPage() {
+  const [auctions, setAuctions] = useState<Auction[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadAuctions() {
+      try {
+        const dbAuctions = await auctionService.getAuctions()
+        setAuctions(dbAuctions)
+      } catch (error) {
+        console.error('Error loading auctions:', error)
+        // Fallback to mock data
+        setAuctions([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadAuctions()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading auctions...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Transform database auctions to display format
+  const displayAuctions = auctions.length > 0 ? auctions.map(auction => ({
+    id: auction.id,
+    title: auction.title || 'Untitled Auction',
+    description: auction.description || 'No description available',
+    currentPrice: auction.current_price || auction.starting_price,
+    startingPrice: auction.starting_price,
+    buyNowPrice: undefined, // Not available in new schema
+    endTime: auction.ends_at,
+    bidCount: 0, // Will be populated separately
+    category: auction.category?.name || 'Uncategorized',
+    imageUrl: auction.funnel?.description ? `/placeholder.jpg` : undefined,
+    status: auction.status,
+  })) : mockAuctions
+
   return (
     <div className="min-h-screen">
       <Header />
@@ -81,7 +140,7 @@ export default function AuctionsPage() {
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {mockAuctions.map((auction) => (
-            <Link href={`/auctions/${auction.id}`}>
+        <Link key={auction.id} href={`/auctions/${auction.id}`}>
             <Card key={auction.id} className="overflow-hidden">
               <div className="aspect-video bg-muted">
                 <img
@@ -133,4 +192,4 @@ export default function AuctionsPage() {
       </main>
     </div>
   )
-}
+  }

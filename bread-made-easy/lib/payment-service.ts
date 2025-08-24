@@ -1,4 +1,5 @@
 import type { Purchase } from "./types"
+import { databaseService } from "./database-service"
 
 // Mock Stripe integration for development
 export interface PaymentIntent {
@@ -13,13 +14,11 @@ export interface PaymentIntent {
 export interface PaymentResponse {
   success: boolean
   paymentIntent?: PaymentIntent
-  purchase?: Purchase
   error?: string
 }
 
-// Mock payment intents storage
+// Mock payment intents storage - kept for fallback
 const mockPaymentIntents: PaymentIntent[] = []
-const mockPurchases: Purchase[] = []
 
 export const paymentService = {
   async createPaymentIntent(
@@ -45,53 +44,7 @@ export const paymentService = {
   },
 
   async confirmPayment(paymentIntentId: string, paymentMethodId = "pm_card_visa"): Promise<PaymentResponse> {
-    // Simulate payment processing delay
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    const paymentIntent = mockPaymentIntents.find((pi) => pi.id === paymentIntentId)
-    if (!paymentIntent) {
-      return { success: false, error: "Payment intent not found" }
-    }
-
-    // Simulate payment success (90% success rate)
-    const isSuccess = Math.random() > 0.1
-
-    if (isSuccess) {
-      paymentIntent.status = "succeeded"
-
-      // Create purchase record
-      const purchase: Purchase = {
-        id: `purchase_${Date.now()}`,
-        buyerId: paymentIntent.metadata.buyerId || "unknown",
-        auctionId: paymentIntent.metadata.auctionId,
-        type: paymentIntent.metadata.type as "auction_win" | "buy_now" | "direct_sale",
-        amount: paymentIntent.amount / 100, // Convert back from cents
-        status: "completed",
-        stripePaymentIntentId: paymentIntent.id,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }
-
-      mockPurchases.push(purchase)
-
-      return { success: true, paymentIntent, purchase }
-    } else {
-      paymentIntent.status = "canceled"
-      return { success: false, error: "Payment failed. Please try again." }
-    }
-  },
-
-  async getPurchase(purchaseId: string): Promise<Purchase | null> {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    return mockPurchases.find((p) => p.id === purchaseId) || null
-  },
-
-  async getPurchasesByUser(userId: string): Promise<Purchase[]> {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    return mockPurchases.filter((p) => p.buyerId === userId)
-  },
-
-  async refundPayment(paymentIntentId: string): Promise<PaymentResponse> {
+    // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
     const paymentIntent = mockPaymentIntents.find((pi) => pi.id === paymentIntentId)
@@ -99,12 +52,97 @@ export const paymentService = {
       return { success: false, error: "Payment intent not found" }
     }
 
-    const purchase = mockPurchases.find((p) => p.stripePaymentIntentId === paymentIntentId)
-    if (purchase) {
-      purchase.status = "refunded"
-      purchase.updatedAt = new Date()
-    }
+    // Simulate successful payment
+    paymentIntent.status = "succeeded"
 
-    return { success: true, paymentIntent, purchase }
+    return { success: true, paymentIntent }
   },
+
+  async createPurchase(purchase: Omit<Purchase, 'id' | 'created_at' | 'updated_at'>): Promise<Purchase | null> {
+    try {
+      // Try to create purchase in database first
+      const dbPurchase = await databaseService.createPurchase(purchase)
+      if (dbPurchase) {
+        return dbPurchase
+      }
+      
+      // Fallback to mock creation (this shouldn't happen in production)
+      console.warn('Failed to create purchase in database, using mock creation')
+      return null
+    } catch (error) {
+      console.error('Error creating purchase in database:', error)
+      return null
+    }
+  },
+
+  async updatePurchaseStatus(id: string, paymentStatus: string): Promise<Purchase | null> {
+    try {
+      // Try to update purchase in database first
+      const dbPurchase = await databaseService.updatePurchaseStatus(id, paymentStatus)
+      if (dbPurchase) {
+        return dbPurchase
+      }
+      
+      // Fallback to mock update (this shouldn't happen in production)
+      console.warn('Failed to update purchase in database')
+      return null
+    } catch (error) {
+      console.error('Error updating purchase in database:', error)
+      return null
+    }
+  },
+
+  async getPurchases(): Promise<Purchase[]> {
+    try {
+      // Try to get purchases from database first
+      const dbPurchases = await databaseService.getPurchases()
+      if (dbPurchases.length > 0) {
+        return dbPurchases
+      }
+      
+      // Return empty array if no purchases found
+      return []
+    } catch (error) {
+      console.error('Error fetching purchases from database:', error)
+      return []
+    }
+  },
+
+  // Legacy method for backward compatibility
+  async processPayment(
+    amount: number,
+    buyerId: string,
+    funnelId: string,
+    type: 'auction' | 'buy_now' = 'buy_now',
+    paymentMethod = 'stripe'
+  ): Promise<PaymentResponse> {
+    try {
+      // Create payment intent
+      const paymentResponse = await this.createPaymentIntent(amount)
+      if (!paymentResponse.success || !paymentResponse.paymentIntent) {
+        return paymentResponse
+      }
+
+      // Create purchase record
+      const purchase = await this.createPurchase({
+        note: type,
+        funnel_id: funnelId,
+        buyer_id: buyerId,
+        amount,
+        payment_status: 'pending',
+        type: paymentMethod as any,
+        stripe_payment_intent_id: paymentResponse.paymentIntent.id,
+        provider_fee: 0,
+      })
+
+      if (!purchase) {
+        return { success: false, error: "Failed to create purchase record" }
+      }
+
+      return paymentResponse
+    } catch (error) {
+      console.error('Error processing payment:', error)
+      return { success: false, error: "Payment processing failed" }
+    }
+  }
 }

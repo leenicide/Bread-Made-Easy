@@ -1,13 +1,176 @@
+// Database schema types based on the provided schema
+export type AuctionStatus = 'draft' | 'upcoming' | 'active' | 'ended' | 'sold'
+export type UserRole = 'user' | 'admin'
+export type LeaseStatus = 'pending' | 'active' | 'expired' | 'cancelled'
+export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded'
+export type PurchaseType = 'stripe' | 'paypal'
+
 export interface User {
   id: string
   email: string
+  display_name?: string
+  role: UserRole
+  created_at: Date
+  updated_at: Date
+}
+
+export interface Profile {
+  id: string
+  display_name?: string
+  role: UserRole
+  created_at: Date
+  updated_at: Date
+}
+
+export interface Funnel {
+  id: string
+  funnel_id: string
+  title: string
+  description?: string
+  active: boolean
+  created_at: Date
+  updated_at: Date
+}
+
+export interface Category {
+  id: string
   name: string
-  role: "buyer" | "admin"
-  createdAt: Date
-  updatedAt: Date
+  created_at: Date
+  updated_at: Date
+}
+
+export interface Tag {
+  id: string
+  name: string
+  created_at: Date
+  updated_at: Date
 }
 
 export interface Auction {
+  id: string
+  funnel_id?: string
+  title?: string
+  description?: string
+  category_id?: string
+  status: AuctionStatus
+  starting_price: number
+  reserve_price?: number
+  current_price?: number
+  winning_bid_id?: string
+  starts_at: Date
+  ends_at: Date
+  created_at: Date
+  updated_at: Date
+  // Relations
+  funnel?: Funnel
+  category?: Category
+  winning_bid?: Bid
+  tags?: Tag[]
+}
+
+export interface Bid {
+  id: string
+  auction_id: string
+  bidder_id: string
+  amount: number
+  created_at: Date
+  // Relations
+  auction?: Auction
+  bidder?: User
+}
+
+export interface BuyNow {
+  id: string
+  funnel_id: string
+  price: number
+  is_active: boolean
+  created_at: Date
+  updated_at: Date
+  // Relations
+  funnel?: Funnel
+}
+
+export interface CustomRequest {
+  id: string
+  name: string
+  email: string
+  company?: string
+  phone?: string
+  projecttype: string
+  industry: string
+  targetaudience?: string
+  primarygoal: string
+  pages: string[]
+  features: string[]
+  timeline?: string
+  budget?: string
+  inspiration?: string
+  additionalnotes?: string
+  preferredcontact?: string
+  submitted_at: Date
+  status: string
+  assigned_team_member?: string
+  quarter?: string
+  created_at: Date
+  updated_at: Date
+}
+
+export interface Lead {
+  id: string
+  email: string
+  phone_number?: string
+  username?: string
+  created_at: Date
+  updated_at: Date
+}
+
+export interface Lease {
+  id: string
+  auction_id?: string
+  funnel_id?: string
+  renter_id: string
+  status: LeaseStatus
+  start_at: Date
+  end_at: Date
+  price: number
+  notes?: string
+  created_at: Date
+  updated_at: Date
+  // Relations
+  auction?: Auction
+  funnel?: Funnel
+  renter?: User
+}
+
+export interface Purchase {
+  id: string
+  note: 'auction' | 'buy_now'
+  funnel_id: string
+  buyer_id: string
+  amount: number
+  payment_status: PaymentStatus
+  type: PurchaseType
+  stripe_payment_intent_id?: string
+  paypal_order_id?: string
+  paypal_transaction_id?: string
+  provider_fee: number
+  created_at: Date
+  updated_at: Date
+  // Relations
+  funnel?: Funnel
+  buyer?: User
+}
+
+export interface AuctionTag {
+  auction_id: string
+  tag_id: string
+  // Relations
+  auction?: Auction
+  tag?: Tag
+}
+
+// Legacy interfaces for backward compatibility
+export interface LegacyAuction {
   id: string
   title: string
   description: string
@@ -26,7 +189,7 @@ export interface Auction {
   updatedAt: Date
 }
 
-export interface Bid {
+export interface LegacyBid {
   id: string
   auctionId: string
   bidderId: string
@@ -35,7 +198,7 @@ export interface Bid {
   isWinning: boolean
 }
 
-export interface Purchase {
+export interface LegacyPurchase {
   id: string
   buyerId: string
   auctionId?: string
@@ -47,7 +210,7 @@ export interface Purchase {
   updatedAt: Date
 }
 
-export interface CustomRequest {
+export interface LegacyCustomRequest {
   id: string
   buyerId: string
   title: string
@@ -59,7 +222,7 @@ export interface CustomRequest {
   updatedAt: Date
 }
 
-export interface Lead {
+export interface LegacyLead {
   id: string
   email: string
   name?: string

@@ -11,7 +11,7 @@ import { CountdownTimer } from "@/components/auction/countdown-timer"
 import { BidForm } from "@/components/auction/bid-form"
 import { BidHistory } from "@/components/auction/bid-history"
 import { auctionService } from "@/lib/auction-service"
-import type { Auction } from "@/lib/types"
+import type { Auction, Bid } from "@/lib/types"
 import { ArrowLeft, Eye, Heart, Share2, Tag, Users, Calendar, CheckCircle } from "lucide-react"
 import Link from "next/link"
 
@@ -19,15 +19,21 @@ export default function AuctionDetailPage() {
   const params = useParams()
   const auctionId = params.id as string
   const [auction, setAuction] = useState<Auction | null>(null)
+  const [bids, setBids] = useState<Bid[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
   useEffect(() => {
-    const fetchAuction = async () => {
+    const fetchAuctionData = async () => {
       try {
-        const auctionData = await auctionService.getAuction(auctionId)
+        const [auctionData, bidsData] = await Promise.all([
+          auctionService.getAuctionById(auctionId),
+          auctionService.getBidsByAuction(auctionId)
+        ])
+        
         if (auctionData) {
           setAuction(auctionData)
+          setBids(bidsData)
         } else {
           setError("Auction not found")
         }
@@ -39,12 +45,15 @@ export default function AuctionDetailPage() {
     }
 
     if (auctionId) {
-      fetchAuction()
+      fetchAuctionData()
     }
   }, [auctionId])
 
-  const handleBidPlaced = (updatedAuction: Auction) => {
+  const handleBidPlaced = async (updatedAuction: Auction) => {
     setAuction(updatedAuction)
+    // Refresh bids after a new bid is placed
+    const bidsData = await auctionService.getBidsByAuction(auctionId)
+    setBids(bidsData)
   }
 
   const handleBuyNow = (updatedAuction: Auction) => {
@@ -92,6 +101,14 @@ export default function AuctionDetailPage() {
     )
   }
 
+  // Format dates and handle database vs mock data structure
+  const startTime = 'startTime' in auction ? auction.startTime : new Date(auction.starts_at)
+  const endTime = 'endTime' in auction ? auction.endTime : new Date(auction.ends_at)
+  const currentPrice = 'currentPrice' in auction ? auction.currentPrice : auction.current_price
+  const startingPrice = 'startingPrice' in auction ? auction.startingPrice : auction.starting_price
+  const category = 'category' in auction ? auction.category : auction.category?.name || 'Uncategorized'
+  const imageUrl = 'imageUrl' in auction ? auction.imageUrl : "/placeholder.svg"
+
   return (
     <div className="min-h-screen">
       <Header />
@@ -110,8 +127,8 @@ export default function AuctionDetailPage() {
             {/* Auction Image */}
             <div className="aspect-video rounded-lg overflow-hidden bg-muted">
               <img
-                src={auction.imageUrl || "/placeholder.svg"}
-                alt={auction.title}
+                src={imageUrl}
+                alt={auction.title || 'Auction'}
                 className="w-full h-full object-cover"
               />
             </div>
@@ -122,15 +139,15 @@ export default function AuctionDetailPage() {
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <Badge variant="secondary">{auction.category}</Badge>
+                      <Badge variant="secondary">{category}</Badge>
                       <CountdownTimer
-                        endTime={auction.endTime}
+                        endTime={endTime}
                         onExpire={() => {
                           setAuction((prev) => (prev ? { ...prev, status: "ended" } : null))
                         }}
                       />
                     </div>
-                    <CardTitle className="text-2xl">{auction.title}</CardTitle>
+                    <CardTitle className="text-2xl">{auction.title || 'Untitled Auction'}</CardTitle>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button variant="ghost" size="sm">
@@ -143,7 +160,9 @@ export default function AuctionDetailPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                <CardDescription className="text-base leading-relaxed">{auction.description}</CardDescription>
+                <CardDescription className="text-base leading-relaxed">
+                  {auction.description || 'No description available'}
+                </CardDescription>
 
                 <Separator />
 
@@ -151,11 +170,11 @@ export default function AuctionDetailPage() {
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">Started: {auction.startTime.toLocaleDateString()}</span>
+                      <span className="text-sm">Started: {startTime.toLocaleDateString()}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Tag className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">Starting Price: ${auction.startingPrice}</span>
+                      <span className="text-sm">Starting Price: ${startingPrice}</span>
                     </div>
                   </div>
                   <div className="space-y-4">
@@ -165,7 +184,7 @@ export default function AuctionDetailPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Users className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">12 watchers</span>
+                      <span className="text-sm">{bids.length} bids</span>
                     </div>
                   </div>
                 </div>
@@ -190,22 +209,6 @@ export default function AuctionDetailPage() {
                     ))}
                   </div>
                 </div>
-
-                {auction.tags.length > 0 && (
-                  <>
-                    <Separator />
-                    <div>
-                      <h3 className="font-semibold mb-3">Tags:</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {auction.tags.map((tag) => (
-                          <Badge key={tag} variant="outline">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
               </CardContent>
             </Card>
           </div>
@@ -215,7 +218,7 @@ export default function AuctionDetailPage() {
             <BidForm auction={auction} onBidPlaced={handleBidPlaced} onBuyNow={handleBuyNow} />
 
             {/* Bid History */}
-            <BidHistory auctionId={auction.id} />
+            <BidHistory bids={bids} />
           </div>
         </div>
       </main>

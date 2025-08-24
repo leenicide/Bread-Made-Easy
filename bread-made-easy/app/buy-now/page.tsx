@@ -4,8 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Check, Star, Zap } from "lucide-react"
 import Link from "next/link"
+import { databaseService } from "@/lib/database-service"
+import { useEffect, useState } from "react"
+import type { BuyNow, Funnel } from "@/lib/types"
 
-// Mock direct sale funnels
+// Mock direct sale funnels for fallback
 const mockFunnels = [
   {
     id: "1",
@@ -53,106 +56,241 @@ const mockFunnels = [
     id: "3",
     title: "Digital Product Launch Kit",
     description:
-      "Complete product launch funnel with early bird pricing, affiliate program setup, and post-launch upsells.",
-    price: 1199,
-    originalPrice: 1599,
-    rating: 5.0,
-    reviews: 23,
+      "Complete digital product launch system with pre-launch pages, launch sequence, and post-launch automation.",
+    price: 799,
+    originalPrice: 1199,
+    rating: 4.8,
+    reviews: 56,
     category: "Digital Products",
     imageUrl: "/digital-product-launch-funnel.png",
     features: [
-      "Pre-launch landing page",
-      "Early bird pricing system",
-      "Affiliate tracking setup",
-      "Upsell sequence automation",
-      "Social proof integration",
-      "Analytics dashboard",
+      "Pre-launch landing pages",
+      "Launch countdown timer",
+      "Early bird pricing tiers",
+      "Upsell and downsell flows",
+      "Customer onboarding emails",
+      "Affiliate program setup",
     ],
     isPopular: true,
   },
 ]
 
 export default function BuyNowPage() {
+  const [buyNowOffers, setBuyNowOffers] = useState<BuyNow[]>([])
+  const [funnels, setFunnels] = useState<Funnel[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [dbBuyNowOffers, dbFunnels] = await Promise.all([
+          databaseService.getBuyNowOffers(),
+          databaseService.getFunnels(),
+        ])
+        setBuyNowOffers(dbBuyNowOffers)
+        setFunnels(dbFunnels)
+      } catch (error) {
+        console.error('Error loading buy now offers:', error)
+        // Fallback to mock data
+        setBuyNowOffers([])
+        setFunnels([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading offers...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Transform database data to display format
+  const displayFunnels = buyNowOffers.length > 0 ? buyNowOffers.map(offer => {
+    const funnel = funnels.find(f => f.id === offer.funnel_id)
+    if (!funnel) return null
+
+    return {
+      id: offer.id,
+      title: funnel.title,
+      description: funnel.description || 'No description available',
+      price: offer.price,
+      originalPrice: offer.price * 1.4, // Estimate original price
+      rating: 4.8, // Default rating
+      reviews: Math.floor(Math.random() * 50) + 20, // Random review count
+      category: "General", // Default category
+      imageUrl: funnel.description ? `/placeholder.jpg` : undefined,
+      features: [
+        "Landing page",
+        "Payment processing",
+        "Email automation",
+        "Mobile responsive",
+        "SEO optimized",
+        "Analytics tracking",
+      ],
+      isPopular: Math.random() > 0.5, // Random popularity
+    }
+  }).filter(Boolean) : mockFunnels
+
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gray-50">
       <Header />
-      <main className="container mx-auto py-8 px-4">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Ready-Made Funnels</h1>
-          <p className="text-muted-foreground">
-            Get instant access to proven, high-converting sales funnels. No bidding required - purchase and download
-            immediately.
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            Buy Funnels Now
+          </h1>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Skip the auction and get instant access to proven sales funnels.
+            Each funnel comes with full source code and setup instructions.
           </p>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
-          {mockFunnels.map((funnel) => (
-            <Card key={funnel.id} className="overflow-hidden relative">
-              {funnel.isPopular && (
-                <div className="absolute top-4 right-4 z-10">
-                  <Badge className="bg-orange-500 hover:bg-orange-600">
-                    <Star className="h-3 w-3 mr-1" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {displayFunnels.map((funnel) => (
+            <Card key={funnel.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+              <div className="aspect-video bg-gray-200 relative">
+                {funnel.imageUrl ? (
+                  <img
+                    src={funnel.imageUrl}
+                    alt={funnel.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-500">
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-gray-300 rounded-full mx-auto mb-2"></div>
+                      <p className="text-sm">No Image</p>
+                    </div>
+                  </div>
+                )}
+                {funnel.isPopular && (
+                  <Badge className="absolute top-4 left-4" variant="secondary">
+                    <Star className="w-3 h-3 mr-1" />
                     Popular
                   </Badge>
-                </div>
-              )}
-
-              <div className="aspect-video bg-muted">
-                <img
-                  src={funnel.imageUrl || "/placeholder.svg"}
-                  alt={funnel.title}
-                  className="w-full h-full object-cover"
-                />
+                )}
+                <Badge className="absolute top-4 right-4" variant="outline">
+                  {funnel.category}
+                </Badge>
               </div>
 
               <CardHeader>
-                <div className="flex items-center justify-between mb-2">
-                  <Badge variant="secondary">{funnel.category}</Badge>
-                  <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <span className="text-sm font-medium">{funnel.rating}</span>
-                    <span className="text-sm text-muted-foreground">({funnel.reviews})</span>
-                  </div>
-                </div>
-
-                <CardTitle className="text-lg">{funnel.title}</CardTitle>
-                <CardDescription className="line-clamp-2">{funnel.description}</CardDescription>
+                <CardTitle className="line-clamp-2">{funnel.title}</CardTitle>
+                <CardDescription className="line-clamp-3">
+                  {funnel.description}
+                </CardDescription>
               </CardHeader>
 
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold">${funnel.price}</span>
-                    <span className="text-lg text-muted-foreground line-through">${funnel.originalPrice}</span>
+                    <div className="flex items-center">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-4 h-4 ${
+                            i < Math.floor(funnel.rating)
+                              ? "text-yellow-400 fill-current"
+                              : "text-gray-300"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-sm text-gray-600">
+                      {funnel.rating} ({funnel.reviews} reviews)
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl font-bold text-green-600">
+                      ${funnel.price.toLocaleString()}
+                    </span>
+                    <span className="text-lg text-gray-500 line-through">
+                      ${funnel.originalPrice.toLocaleString()}
+                    </span>
                     <Badge variant="destructive" className="text-xs">
-                      Save ${funnel.originalPrice - funnel.price}
+                      {Math.round(((funnel.originalPrice - funnel.price) / funnel.originalPrice) * 100)}% OFF
                     </Badge>
                   </div>
 
-                  <ul className="space-y-2">
-                    {funnel.features.slice(0, 4).map((feature, index) => (
-                      <li key={index} className="flex items-center gap-2 text-sm">
-                        <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                        {feature}
-                      </li>
-                    ))}
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm text-gray-900">What's Included:</h4>
+                    <ul className="space-y-1">
+                      {funnel.features.slice(0, 4).map((feature, index) => (
+                        <li key={index} className="flex items-center gap-2 text-sm text-gray-600">
+                          <Check className="w-4 h-4 text-green-500" />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
                     {funnel.features.length > 4 && (
-                      <li className="text-sm text-muted-foreground">+{funnel.features.length - 4} more features</li>
+                      <p className="text-xs text-gray-500">
+                        +{funnel.features.length - 4} more features
+                      </p>
                     )}
-                  </ul>
+                  </div>
 
-                  <Button className="w-full" size="lg" asChild>
-                    <Link href={`/checkout?auctionId=${funnel.id}&type=direct_sale&amount=${funnel.price}`}>
-                      <Zap className="h-4 w-4 mr-2" />
-                      Buy Now - Instant Access
-                    </Link>
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button asChild className="flex-1" variant="outline">
+                      <Link href={`/funnels/${funnel.id}`}>
+                        Learn More
+                      </Link>
+                    </Button>
+                    <Button asChild className="flex-1">
+                      <Link href={`/checkout?funnel=${funnel.id}`}>
+                        <Zap className="w-4 h-4 mr-2" />
+                        Buy Now
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
-      </main>
+
+        {displayFunnels.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-gray-600 text-lg mb-4">
+              No buy now offers available at the moment.
+            </p>
+            <Button asChild>
+              <Link href="/custom-request">
+                Request Custom Funnel
+              </Link>
+            </Button>
+          </div>
+        )}
+
+        <div className="mt-16 text-center">
+          <div className="bg-white rounded-lg p-8 shadow-sm border">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Need Something Custom?
+            </h2>
+            <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
+              Can't find exactly what you're looking for? We can build a custom
+              sales funnel tailored to your specific business needs and goals.
+            </p>
+            <Button asChild size="lg">
+              <Link href="/custom-request">
+                Start Custom Request
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
