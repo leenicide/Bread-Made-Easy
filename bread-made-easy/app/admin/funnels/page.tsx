@@ -29,7 +29,7 @@ export default function FunnelManagement() {
 
   const loadFunnels = async () => {
     try {
-      const funnelData = await funnelService.getFunnels()
+      const funnelData = await funnelService.getFunnelsWithCategories()
       setFunnels(funnelData)
     } catch (error) {
       console.error("Error loading funnels:", error)
