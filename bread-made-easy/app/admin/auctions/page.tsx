@@ -21,6 +21,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import Link from "next/link"
 
 export default function AdminAuctionsPage() {
   const [auctions, setAuctions] = useState<Auction[]>([])
@@ -261,9 +262,11 @@ export default function AdminAuctionsPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="bg-transparent">
-                    <Eye className="h-4 w-4 mr-2" />
-                    View
+                  <Button variant="outline" size="sm" className="bg-transparent" asChild>
+                    <Link href={`/auctions/${auction.id}`}>
+                      <Eye className="h-4 w-4 mr-2" />
+                      View
+                    </Link>
                   </Button>
                   <Button
                     variant="outline"
