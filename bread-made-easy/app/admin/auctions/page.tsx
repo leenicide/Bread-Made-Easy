@@ -132,6 +132,37 @@ export default function AdminAuctionsPage() {
     }
   }
 
+  const handleStatusToggle = async (auction: Auction) => {
+    try {
+      const newStatus = auction.status === "active" ? "draft" : "active";
+      
+      // Update the UI optimistically first
+      setAuctions(auctions.map(a => 
+        a.id === auction.id ? { ...a, status: newStatus } : a
+      ));
+      
+      // Then update the database
+      const updatedAuction = await auctionService.updateAuction(auction.id, { status: newStatus });
+      
+      if (updatedAuction) {
+        // Update with the actual response from the server
+        setAuctions(auctions.map(a => a.id === auction.id ? updatedAuction : a));
+      } else {
+        // If the update failed, revert the UI change
+        setAuctions(auctions.map(a => 
+          a.id === auction.id ? { ...a, status: auction.status } : a
+        ));
+        console.error("Failed to update auction status");
+      }
+    } catch (error) {
+      // If there's an error, revert the UI change
+      setAuctions(auctions.map(a => 
+        a.id === auction.id ? { ...a, status: auction.status } : a
+      ));
+      console.error("Failed to update auction status:", error);
+    }
+  }
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
@@ -278,16 +309,26 @@ export default function AdminAuctionsPage() {
                     Edit
                   </Button>
                   {auction.status === "active" ? (
-                    <Button variant="outline" size="sm" className="bg-transparent">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="bg-transparent"
+                      onClick={() => handleStatusToggle(auction)}
+                    >
                       <Pause className="h-4 w-4 mr-2" />
                       Pause
                     </Button>
-                  ) : (
-                    <Button variant="outline" size="sm" className="bg-transparent">
+                  ) : auction.status === "draft" ? (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="bg-transparent"
+                      onClick={() => handleStatusToggle(auction)}
+                    >
                       <Play className="h-4 w-4 mr-2" />
                       Resume
                     </Button>
-                  )}
+                  ) : null}
                 </div>
               </CardContent>
             </Card>
@@ -437,4 +478,3 @@ export default function AdminAuctionsPage() {
     </AdminLayout>
   )
 }
-
