@@ -65,7 +65,13 @@ export default function AdminAuctionsPage() {
     if (!editingAuction) return
 
     try {
-      const updatedAuction = await auctionService.updateAuction(editingAuction.id, formData)
+      // Convert the form data to match the Auction type
+      const updateData = {
+        ...formData,
+        ends_at: formData.ends_at ? new Date(formData.ends_at) : undefined,
+      }
+      
+      const updatedAuction = await auctionService.updateAuction(editingAuction.id, updateData)
       if (updatedAuction) {
         setAuctions(auctions.map(a => a.id === editingAuction.id ? updatedAuction : a))
         setIsEditDialogOpen(false)
