@@ -51,10 +51,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const userData: User = {
             id: session.user.id,
             email: session.user.email!,
-            name: profile.name,
+            display_name: profile.display_name,
             role: profile.role,
-            createdAt: new Date(profile.created_at || Date.now()),
-            updatedAt: new Date(profile.updated_at || Date.now())
+            created_at: profile.created_at,
+            updated_at: profile.updated_at
           }
           setUser(userData)
           localStorage.setItem("auth_user", JSON.stringify(userData))

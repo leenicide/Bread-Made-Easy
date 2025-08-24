@@ -84,7 +84,7 @@ export function Header() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center gap-2">
                     <User className="h-4 w-4" />
-                    <span className="hidden sm:inline">{user.name}</span>
+                    <span className="hidden sm:inline">{user.display_name}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -105,9 +105,6 @@ export function Header() {
               <>
                 <Button variant="ghost" asChild className="hidden sm:flex">
                   <Link href="/login">Login</Link>
-                </Button>
-                <Button asChild>
-                  <Link href="/signup">Get Started</Link>
                 </Button>
               </>
             )}
