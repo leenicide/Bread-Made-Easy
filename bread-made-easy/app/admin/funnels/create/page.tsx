@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Save, Upload, Image as ImageIcon } from "lucide-react"
+import { Save, Upload, Image as ImageIcon, Plus, X } from "lucide-react"
 import { funnelService } from "@/lib/funnel-service"
 import { AdminLayout } from "@/components/admin/admin-layout"
+import type { Category } from "@/lib/types"
 
 export default function CreateFunnel() {
   const { user } = useAuth()
@@ -21,13 +22,31 @@ export default function CreateFunnel() {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("")
+  const [newCategoryName, setNewCategoryName] = useState("")
+  const [showNewCategory, setShowNewCategory] = useState(false)
+  const [loadingCategories, setLoadingCategories] = useState(true)
 
   useEffect(() => {
     // Redirect if not admin
     if (user && user.role !== 'admin') {
       router.push('/dashboard')
+    } else {
+      loadCategories()
     }
   }, [user, router])
+
+  const loadCategories = async () => {
+    try {
+      const categoryData = await funnelService.getCategories()
+      setCategories(categoryData)
+    } catch (error) {
+      console.error("Error loading categories:", error)
+    } finally {
+      setLoadingCategories(false)
+    }
+  }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -43,6 +62,28 @@ export default function CreateFunnel() {
 
   const triggerFileInput = () => {
     fileInputRef.current?.click()
+  }
+
+  const handleAddNewCategory = async () => {
+    if (!newCategoryName.trim()) {
+      alert("Please enter a category name")
+      return
+    }
+
+    try {
+      const newCategory = await funnelService.createCategory(newCategoryName.trim())
+      if (newCategory) {
+        setCategories([...categories, newCategory])
+        setSelectedCategoryId(newCategory.id)
+        setNewCategoryName("")
+        setShowNewCategory(false)
+      } else {
+        alert("Failed to create category")
+      }
+    } catch (error) {
+      console.error("Error creating category:", error)
+      alert("An error occurred while creating the category")
+    }
   }
 
   const saveFunnel = async () => {
@@ -70,7 +111,8 @@ export default function CreateFunnel() {
       const funnelData = {
         title: funnelName,
         description: funnelDescription,
-        image_url: imageUrl
+        image_url: imageUrl || undefined, // Convert null to undefined
+        category_id: selectedCategoryId || undefined
       }
 
       const newFunnel = await funnelService.createFunnel(funnelData)
@@ -135,6 +177,64 @@ export default function CreateFunnel() {
                   placeholder="Describe this product or offering..."
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label>Category</Label>
+                {loadingCategories ? (
+                  <p className="text-sm text-muted-foreground">Loading categories...</p>
+                ) : (
+                  <>
+                    <select
+                      value={selectedCategoryId}
+                      onChange={(e) => setSelectedCategoryId(e.target.value)}
+                      className="w-full p-2 border rounded-md"
+                    >
+                      <option value="">Select a category</option>
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                    
+                    {!showNewCategory ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowNewCategory(true)}
+                        className="text-sm text-blue-600 hover:underline mt-1 flex items-center"
+                      >
+                        <Plus className="h-3 w-3 mr-1" /> Add new category
+                      </button>
+                    ) : (
+                      <div className="mt-2 space-y-2">
+                        <div className="flex space-x-2">
+                          <Input
+                            value={newCategoryName}
+                            onChange={(e) => setNewCategoryName(e.target.value)}
+                            placeholder="Enter new category name"
+                            className="flex-1"
+                          />
+                          <Button
+                            type="button"
+                            onClick={handleAddNewCategory}
+                            size="sm"
+                          >
+                            Add
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setShowNewCategory(false)}
+                            size="sm"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -185,11 +285,11 @@ export default function CreateFunnel() {
         {/* Info Box */}
         <Card className="mt-6 bg-blue-50 border-blue-200">
           <CardContent className="p-4">
-            <h3 className="font-semibold text-blue-800">About Funnels</h3>
+            <h3 className="font-semibold text-blue-800">About Funnels & Categories</h3>
             <p className="text-sm text-blue-600 mt-1">
-              Funnels represent products or offerings that can be auctioned. Each funnel 
-              creates a unique identifier that can be used to track auctions and purchases 
-              for this specific offering.
+              Funnels represent products or offerings that can be auctioned. Categories help 
+              organize your offerings and make them easier to find. Each funnel can belong to 
+              one category.
             </p>
           </CardContent>
         </Card>

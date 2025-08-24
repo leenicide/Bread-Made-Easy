@@ -94,28 +94,31 @@ export default function FunnelManagement() {
                   <CardDescription>ID: {funnel.funnel_id}</CardDescription>
                 </CardHeader>
                 <CardContent className="flex-grow">
-                  <div className="flex space-x-4 mb-4">
-                    {funnel.image_url ? (
-                      <img 
-                        src={funnel.image_url} 
-                        alt={funnel.title} 
-                        className="w-20 h-20 object-cover rounded-md"
-                      />
-                    ) : (
-                      <div className="w-20 h-20 bg-muted rounded-md flex items-center justify-center">
-                        <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-sm text-muted-foreground line-clamp-3">
-                        {funnel.description || "No description"}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Created: {new Date(funnel.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
+  <div className="flex space-x-4 mb-4">
+    {funnel.image_url ? (
+      <img 
+        src={funnel.image_url} 
+        alt={funnel.title} 
+        className="w-20 h-20 object-cover rounded-md"
+      />
+    ) : (
+      <div className="w-20 h-20 bg-muted rounded-md flex items-center justify-center">
+        <ImageIcon className="h-8 w-8 text-muted-foreground" />
+      </div>
+    )}
+    <div>
+      <p className="text-sm text-muted-foreground line-clamp-3">
+        {funnel.description || "No description"}
+      </p>
+      <p className="text-xs text-muted-foreground mt-2">
+        Category: {funnel.category?.name || "Uncategorized"}
+      </p>
+      <p className="text-xs text-muted-foreground">
+        Created: {new Date(funnel.created_at).toLocaleDateString()}
+      </p>
+    </div>
+  </div>
+</CardContent>
                 <div className="p-4 pt-0 border-t flex justify-between">
                   <Link href={`/admin/funnels/edit/${funnel.id}`}>
                     <Button variant="outline" size="sm">

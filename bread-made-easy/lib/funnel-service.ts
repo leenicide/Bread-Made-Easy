@@ -1,6 +1,6 @@
 // lib/funnel-service.ts
 import { supabase } from "@/lib/supabase-client"
-import type { Funnel } from "./types"
+import type { Funnel,Category } from "./types"
 
 export class FunnelService {
   // Get all active funnels
@@ -52,10 +52,80 @@ export class FunnelService {
   }
 
   // Create a new funnel
+  async getCategories(): Promise<Category[]> {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .order('name', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching categories:', error)
+      return []
+    }
+
+    return data || []
+  }
+
+  // Create a new category
+  async createCategory(name: string): Promise<Category | null> {
+    const { data, error } = await supabase
+      .from('categories')
+      .insert([{ name }])
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating category:', error)
+      return null
+    }
+
+    return data
+  }
+
+  // Get funnel with category information
+  async getFunnelByIdWithCategory(id: string): Promise<Funnel | null> {
+    const { data, error } = await supabase
+      .from('funnels')
+      .select(`
+        *,
+        category:categories(*)
+      `)
+      .eq('id', id)
+      .single()
+
+    if (error) {
+      console.error('Error fetching funnel with category:', error)
+      return null
+    }
+
+    return data
+  }
+
+  // Get all funnels with category information
+  async getFunnelsWithCategories(): Promise<Funnel[]> {
+    const { data, error } = await supabase
+      .from('funnels')
+      .select(`
+        *,
+        category:categories(*)
+      `)
+      .eq('active', true)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching funnels with categories:', error)
+      return []
+    }
+
+    return data || []
+  }
+
+  // Update createFunnel to include category_id
   async createFunnel(funnelData: {
     title: string
     description?: string
     image_url?: string
+    category_id?: string
   }): Promise<Funnel | null> {
     // Generate a unique funnel_id
     const funnelId = this.generateFunnelId(funnelData.title)
@@ -65,6 +135,7 @@ export class FunnelService {
       title: funnelData.title,
       description: funnelData.description || null,
       image_url: funnelData.image_url || null,
+      category_id: funnelData.category_id || null,
       active: true
     }
 

@@ -26,7 +26,10 @@ export interface Funnel {
   id: string
   funnel_id: string
   title: string
+  category_id?: string
   description?: string
+  category?: Category | null
+
   image_url: string | null
   active: boolean
   created_at: Date
