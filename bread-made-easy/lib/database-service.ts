@@ -63,48 +63,46 @@ export class DatabaseService {
 
   // Auction operations
   async getAuctions(): Promise<Auction[]> {
-  const { data, error } = await supabase
-    .from('auctions')
-    .select(`
-      *,
-      funnel:funnels(*),
-      category:categories(*),
-      winning_bid:bids!winning_bid_id(*)
-    `)
-    .eq('status', 'active')
-    .order('ends_at', { ascending: true })
+    const { data, error } = await supabase
+      .from('auctions')
+      .select(`
+        *,
+        funnel:funnels(*),
+        category:categories(*),
+        winning_bid:bids!winning_bid_id(*)
+      `)
+      .order('ends_at', { ascending: true })
 
-  console.log('Fetched auctions:', data)
+    console.log('Fetched auctions:', data)
 
-  if (error) {
-    console.error('Error fetching auctions:', error)
-    return []
+    if (error) {
+      console.error('Error fetching auctions:', error)
+      return []
+    }
+
+    return data || []
   }
-
-  return data || []
-}
 
   async getAuctionById(id: string): Promise<Auction | null> {
-  const { data, error } = await supabase
-    .from('auctions')
-    .select(`
-      *,
-      funnel:funnels(*),
-      category:categories(*),
-      winning_bid:bids!winning_bid_id(*),
-      bids:bids(*)
-    `)
-    .eq('id', id)
-    .single()
+    const { data, error } = await supabase
+      .from('auctions')
+      .select(`
+        *,
+        funnel:funnels(*),
+        category:categories(*),
+        winning_bid:bids!winning_bid_id(*),
+        bids:bids(*)
+      `)
+      .eq('id', id)
+      .single()
 
-  if (error) {
-    console.error('Error fetching auction:', error)
-    return null
+    if (error) {
+      console.error('Error fetching auction:', error)
+      return null
+    }
+
+    return data
   }
-
-  return data
-}
-
 
   async createAuction(auction: Omit<Auction, 'id' | 'created_at' | 'updated_at'>): Promise<Auction | null> {
     const { data, error } = await supabase
@@ -139,19 +137,19 @@ export class DatabaseService {
 
   // Bid operations
   async getBidsByAuction(auctionId: string): Promise<Bid[]> {
-  const { data, error } = await supabase
-    .from('bids')
-    .select('*')
-    .eq('auction_id', auctionId)
-    .order('amount', { ascending: false })
+    const { data, error } = await supabase
+      .from('bids')
+      .select('*')
+      .eq('auction_id', auctionId)
+      .order('amount', { ascending: false })
 
-  if (error) {
-    console.error('Error fetching bids:', error)
-    return []
+    if (error) {
+      console.error('Error fetching bids:', error)
+      return []
+    }
+
+    return data
   }
-
-  return data
-}
 
   async createBid(bid: Omit<Bid, 'id' | 'created_at'>): Promise<Bid | null> {
     const { data, error } = await supabase
@@ -433,6 +431,7 @@ export class DatabaseService {
       description: auction.description || '',
       startingPrice: auction.starting_price,
       currentPrice: auction.current_price || auction.starting_price,
+      buyNowPrice: auction.buy_now || null, // Added buyNowPrice
       startTime: auction.starts_at,
       endTime: auction.ends_at,
       status: auction.status,
