@@ -8,18 +8,37 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { auctionService } from "@/lib/auction-service"
 import type { Auction } from "@/lib/types"
-import { Plus, Search, Edit, Eye, Pause, Play } from "lucide-react"
+import { Plus, Search, Edit, Eye, Pause, Play, X, Save } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 
 export default function AdminAuctionsPage() {
   const [auctions, setAuctions] = useState<Auction[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const [editingAuction, setEditingAuction] = useState<Auction | null>(null)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    starting_price: 0,
+    buy_now: 0,
+    ends_at: "",
+  })
 
   useEffect(() => {
     const fetchAuctions = async () => {
       try {
         const auctionsData = await auctionService.getAuctions()
-        console.log("First auction object:", auctionsData[0]) // Inspect the structure
+        console.log("First auction object:", auctionsData[0])
         setAuctions(auctionsData)
       } catch (error) {
         console.error("Failed to fetch auctions:", error)
@@ -29,6 +48,41 @@ export default function AdminAuctionsPage() {
     }
     fetchAuctions()
   }, [])
+
+  const handleEditClick = (auction: Auction) => {
+    setEditingAuction(auction)
+    setFormData({
+      title: auction.title || "",
+      description: auction.description || "",
+      starting_price: auction.starting_price || 0,
+      buy_now: auction.buy_now || 0,
+      ends_at: auction.ends_at ? new Date(auction.ends_at).toISOString().slice(0, 16) : "",
+    })
+    setIsEditDialogOpen(true)
+  }
+
+  const handleSaveClick = async () => {
+    if (!editingAuction) return
+
+    try {
+      const updatedAuction = await auctionService.updateAuction(editingAuction.id, formData)
+      if (updatedAuction) {
+        setAuctions(auctions.map(a => a.id === editingAuction.id ? updatedAuction : a))
+        setIsEditDialogOpen(false)
+        setEditingAuction(null)
+      }
+    } catch (error) {
+      console.error("Failed to update auction:", error)
+    }
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: name.includes('price') || name.includes('buy_now') ? Number(value) : value
+    }))
+  }
 
   const filteredAuctions = auctions.filter((auction) => 
     auction.title?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -88,9 +142,6 @@ export default function AdminAuctionsPage() {
                       {auction.description || "No description available"}
                     </CardDescription>
                     <div className="flex items-center gap-2">
-                      {auction.category && (
-                        <Badge variant="secondary">{auction.category.toString()}</Badge>
-                      )}
                       <Badge
                         variant={
                           auction.status === "active"
@@ -106,7 +157,7 @@ export default function AdminAuctionsPage() {
                   </div>
                   <div className="aspect-video w-32 bg-muted rounded overflow-hidden">
                     <img
-                      src="/placeholder.svg"
+                      src={auction.funnel?.image_url || "/placeholder.svg"}
                       alt={auction.title || "Auction image"}
                       className="w-full h-full object-cover"
                     />
@@ -140,7 +191,12 @@ export default function AdminAuctionsPage() {
                     <Eye className="h-4 w-4 mr-2" />
                     View
                   </Button>
-                  <Button variant="outline" size="sm" className="bg-transparent">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="bg-transparent"
+                    onClick={() => handleEditClick(auction)}
+                  >
                     <Edit className="h-4 w-4 mr-2" />
                     Edit
                   </Button>
@@ -160,6 +216,93 @@ export default function AdminAuctionsPage() {
             </Card>
           ))}
         </div>
+
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Edit Auction</DialogTitle>
+              <DialogDescription>
+                Make changes to the auction details. Click save when you're done.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="title" className="text-right">
+                  Title
+                </Label>
+                <Input
+                  id="title"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="description" className="text-right">
+                  Description
+                </Label>
+                <Textarea
+                  id="description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="starting_price" className="text-right">
+                  Starting Price
+                </Label>
+                <Input
+                  id="starting_price"
+                  name="starting_price"
+                  type="number"
+                  value={formData.starting_price}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="buy_now" className="text-right">
+                  Buy Now Price
+                </Label>
+                <Input
+                  id="buy_now"
+                  name="buy_now"
+                  type="number"
+                  value={formData.buy_now}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="ends_at" className="text-right">
+                  End Date & Time
+                </Label>
+                <Input
+                  id="ends_at"
+                  name="ends_at"
+                  type="datetime-local"
+                  value={formData.ends_at}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+              <Button onClick={handleSaveClick}>
+                <Save className="h-4 w-4 mr-2" />
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   )

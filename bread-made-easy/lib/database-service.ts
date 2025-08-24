@@ -8,7 +8,6 @@ import type {
   Lead, 
   Purchase, 
   User, 
-  Category, 
   Tag,
   AuctionTag,
   Lease
@@ -68,7 +67,6 @@ export class DatabaseService {
       .select(`
         *,
         funnel:funnels(*),
-        category:categories(*),
         winning_bid:bids!winning_bid_id(*)
       `)
       .order('ends_at', { ascending: true })
@@ -89,7 +87,6 @@ export class DatabaseService {
       .select(`
         *,
         funnel:funnels(*),
-        category:categories(*),
         winning_bid:bids!winning_bid_id(*),
         bids:bids(*)
       `)
@@ -342,21 +339,6 @@ export class DatabaseService {
     return data
   }
 
-  // Category operations
-  async getCategories(): Promise<Category[]> {
-    const { data, error } = await supabase
-      .from('categories')
-      .select('*')
-      .order('name', { ascending: true })
-
-    if (error) {
-      console.error('Error fetching categories:', error)
-      return []
-    }
-
-    return data || []
-  }
-
   // Tag operations
   async getTags(): Promise<Tag[]> {
     const { data, error } = await supabase
@@ -431,14 +413,13 @@ export class DatabaseService {
       description: auction.description || '',
       startingPrice: auction.starting_price,
       currentPrice: auction.current_price || auction.starting_price,
-      buyNowPrice: auction.buy_now || null, // Added buyNowPrice
+      buyNowPrice: auction.buy_now || null,
       startTime: auction.starts_at,
       endTime: auction.ends_at,
       status: auction.status,
       sellerId: auction.funnel?.id || '',
       winnerId: auction.winning_bid?.bidder_id,
-      imageUrl: auction.funnel?.description ? `/placeholder.jpg` : undefined,
-      category: auction.category?.name || '',
+      imageUrl: auction.funnel?.image_url || '/placeholder.jpg',
       tags: [], // Will be populated separately
       createdAt: auction.created_at,
       updatedAt: auction.updated_at

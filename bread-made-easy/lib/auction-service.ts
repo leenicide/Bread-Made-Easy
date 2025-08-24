@@ -69,6 +69,42 @@ const mockBids: Bid[] = [
 ]
 
 export const auctionService = {
+
+    async updateAuction(id: string, updates: Partial<Auction>): Promise<Auction | null> {
+    try {
+      // Try to update auction in database first
+      const dbAuction = await databaseService.updateAuction(id, updates)
+      if (dbAuction) {
+        return dbAuction
+      }
+
+      // Fallback to mock update
+      const index = mockAuctions.findIndex(a => a.id === id)
+      if (index === -1) return null
+
+      const updatedAuction: Auction = {
+        ...mockAuctions[index],
+        ...updates,
+        updated_at: new Date(),
+      }
+      mockAuctions[index] = updatedAuction
+      return updatedAuction
+    } catch (error) {
+      console.error("Error updating auction in database, using mock update:", error)
+
+      const index = mockAuctions.findIndex(a => a.id === id)
+      if (index === -1) return null
+
+      const updatedAuction: Auction = {
+        ...mockAuctions[index],
+        ...updates,
+        updated_at: new Date(),
+      }
+      mockAuctions[index] = updatedAuction
+      return updatedAuction
+    }
+  },
+  
   async getAuctions(): Promise<Auction[]> {
     try {
       // Try to get auctions from database first
