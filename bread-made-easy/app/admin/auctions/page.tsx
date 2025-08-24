@@ -34,6 +34,7 @@ export default function AdminAuctionsPage() {
     title: "",
     description: "",
     starting_price: 0,
+    current_price: 0,
     buy_now: 0,
     ends_at: "",
     funnel_id: "",
@@ -73,6 +74,7 @@ export default function AdminAuctionsPage() {
       title: auction.title || "",
       description: auction.description || "",
       starting_price: auction.starting_price || 0,
+      current_price: auction.current_price || auction.starting_price || 0,
       buy_now: auction.buy_now || 0,
       ends_at: auction.ends_at ? new Date(auction.ends_at).toISOString().slice(0, 16) : "",
       funnel_id: auction.funnel_id || "",
@@ -103,6 +105,7 @@ export default function AdminAuctionsPage() {
     try {
       const createData = {
         ...createFormData,
+        current_price: createFormData.current_price || createFormData.starting_price, // default
         ends_at: createFormData.ends_at
           ? new Date(createFormData.ends_at)
           : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -132,7 +135,7 @@ export default function AdminAuctionsPage() {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
-      [name]: name.includes('price') || name.includes('buy_now') ? Number(value) : value
+      [name]: name.includes("price") || name.includes("buy_now") ? Number(value) : value
     }))
   }
 
@@ -140,22 +143,16 @@ export default function AdminAuctionsPage() {
     const { name, value } = e.target
     setCreateFormData(prev => ({
       ...prev,
-      [name]: name.includes('price') || name.includes('buy_now') ? Number(value) : value
+      [name]: name.includes("price") || name.includes("buy_now") ? Number(value) : value
     }))
   }
 
   const handleSelectChange = (name: string, value: string) => {
-    setCreateFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
+    setCreateFormData(prev => ({ ...prev, [name]: value }))
   }
 
   const handleEditSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
+    setFormData(prev => ({ ...prev, [name]: value }))
   }
 
   const filteredAuctions = auctions.filter((auction) =>
@@ -320,10 +317,8 @@ export default function AdminAuctionsPage() {
                 <Input id="starting_price" name="starting_price" type="number" value={formData.starting_price} onChange={handleInputChange} className="col-span-3" />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="create-current_price" className="text-right">Current Price</Label>
-                <Input id="create-current_price" name="current_price" type="number"value={createFormData.current_price} onChange={handleCreateInputChange}
-                  className="col-span-3"
-                />
+                <Label htmlFor="current_price" className="text-right">Current Price</Label>
+                <Input id="current_price" name="current_price" type="number" value={formData.current_price} onChange={handleInputChange} className="col-span-3" />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="buy_now" className="text-right">Buy Now Price</Label>
@@ -380,6 +375,10 @@ export default function AdminAuctionsPage() {
                 <Input id="create-starting_price" name="starting_price" type="number" value={createFormData.starting_price} onChange={handleCreateInputChange} className="col-span-3" />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="create-current_price" className="text-right">Current Price</Label>
+                <Input id="create-current_price" name="current_price" type="number" value={createFormData.current_price} onChange={handleCreateInputChange} className="col-span-3" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="create-buy_now" className="text-right">Buy Now Price</Label>
                 <Input id="create-buy_now" name="buy_now" type="number" value={createFormData.buy_now} onChange={handleCreateInputChange} className="col-span-3" />
               </div>
@@ -403,19 +402,31 @@ export default function AdminAuctionsPage() {
               {/* Funnel Select */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="create-funnel_id" className="text-right">Funnel</Label>
-                <Select value={createFormData.funnel_id} onValueChange={(value) => handleSelectChange("funnel_id", value)}>
-                  <SelectTrigger className="col-span-3"><SelectValue placeholder="Select funnel" /></SelectTrigger>
+                <Select
+                  value={createFormData.funnel_id}
+                  onValueChange={(value) => handleSelectChange("funnel_id", value)}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select funnel" />
+                  </SelectTrigger>
                   <SelectContent>
                     {funnels.map((funnel) => (
-                      <SelectItem key={funnel.id} value={funnel.id}>{funnel.title}</SelectItem>
+                      <SelectItem key={funnel.id} value={funnel.id}>
+                        {funnel.title}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
+
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}><X className="h-4 w-4 mr-2" />Cancel</Button>
-              <Button onClick={handleCreateClick}><Plus className="h-4 w-4 mr-2" />Create Auction</Button>
+              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                <X className="h-4 w-4 mr-2" /> Cancel
+              </Button>
+              <Button onClick={handleCreateClick}>
+                <Plus className="h-4 w-4 mr-2" /> Create Auction
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -423,3 +434,4 @@ export default function AdminAuctionsPage() {
     </AdminLayout>
   )
 }
+
