@@ -12,6 +12,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<AuthResponse>
   signup: (email: string, password: string, name: string) => Promise<AuthResponse>
   logout: () => Promise<void>
+  getRedirectPath: (userRole: string) => string // Add this function
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -19,6 +20,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Function to determine redirect path based on user role
+  const getRedirectPath = (userRole: string): string => {
+    switch(userRole) {
+      case 'admin':
+        return '/admin'
+      case 'buyer':
+      default:
+        return '/dashboard'
+    }
+  }
 
   useEffect(() => {
     // Check for existing user on mount
@@ -80,7 +92,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null)
   }
 
-  return <AuthContext.Provider value={{ user, loading, login, signup, logout }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      login, 
+      signup, 
+      logout,
+      getRedirectPath // Add this to the context
+    }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {

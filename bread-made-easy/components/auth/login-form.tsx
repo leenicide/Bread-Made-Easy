@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,7 +16,7 @@ export function LoginForm() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-  const { login } = useAuth()
+  const { login, getRedirectPath } = useAuth() // Add getRedirectPath
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,8 +26,10 @@ export function LoginForm() {
 
     try {
       const response = await login(email, password)
-      if (response.success) {
-        router.push("/dashboard")
+      if (response.success && response.user) {
+        // Redirect based on user role
+        const redirectPath = getRedirectPath(response.user.role)
+        router.push(redirectPath)
       } else {
         setError(response.error || "Login failed")
       }
