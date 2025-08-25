@@ -1,3 +1,4 @@
+// app/admin/users/page.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -8,18 +9,20 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, User, Shield, Mail, Calendar, Edit, Save, X } from "lucide-react"
+import { Search, User, Shield, Mail, Calendar, Edit, Save, X, Loader2 } from "lucide-react"
+import { userService } from "@/lib/user-service"
 import { authService } from "@/lib/auth"
 import { CanManageUsers } from "@/components/auth/role-guard"
-import type { User } from "@/lib/types"
+import type { User as UserType } from "@/lib/types"
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<User[]>([])
+  const [users, setUsers] = useState<UserType[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [editingUser, setEditingUser] = useState<string | null>(null)
   const [editingRole, setEditingRole] = useState<string>("")
   const [updating, setUpdating] = useState(false)
+  const [searchLoading, setSearchLoading] = useState(false)
 
   useEffect(() => {
     loadUsers()
@@ -28,7 +31,7 @@ export default function UsersPage() {
   const loadUsers = async () => {
     try {
       setLoading(true)
-      const allUsers = await authService.getAllUsers()
+      const allUsers = await userService.getAllUsers()
       setUsers(allUsers)
     } catch (error) {
       console.error('Error loading users:', error)
@@ -37,7 +40,27 @@ export default function UsersPage() {
     }
   }
 
-  const handleEditRole = (user: User) => {
+  const handleSearch = async (query: string) => {
+    setSearchTerm(query)
+    
+    if (!query.trim()) {
+      // If search is empty, load all users
+      loadUsers()
+      return
+    }
+
+    try {
+      setSearchLoading(true)
+      const searchResults = await userService.searchUsers(query)
+      setUsers(searchResults)
+    } catch (error) {
+      console.error('Error searching users:', error)
+    } finally {
+      setSearchLoading(false)
+    }
+  }
+
+  const handleEditRole = (user: UserType) => {
     setEditingUser(user.id)
     setEditingRole(user.role)
   }
@@ -45,20 +68,24 @@ export default function UsersPage() {
   const handleSaveRole = async (userId: string) => {
     try {
       setUpdating(true)
-      const success = await authService.updateUserRole(userId, editingRole as any)
+      const success = await userService.updateUserRole(userId, editingRole)
       
       if (success) {
         // Update local state
         setUsers(users.map(user => 
           user.id === userId 
-            ? { ...user, role: editingRole as any, updated_at: new Date() }
+            ? { ...user, role: editingRole as any, updated_at: new Date().toISOString() }
             : user
         ))
         setEditingUser(null)
         setEditingRole("")
+        alert("User role updated successfully!")
+      } else {
+        alert("Failed to update user role. Please try again.")
       }
     } catch (error) {
       console.error('Error updating user role:', error)
+      alert("An error occurred while updating the user role.")
     } finally {
       setUpdating(false)
     }
@@ -69,26 +96,30 @@ export default function UsersPage() {
     setEditingRole("")
   }
 
-  const filteredUsers = users.filter(user =>
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (user.display_name && user.display_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    user.role.toLowerCase().includes(searchTerm.toLowerCase())
-  )
-
   const getRoleBadgeVariant = (role: string) => {
-    return role === 'admin' ? 'default' : 'secondary'
+    switch (role) {
+      case 'admin': return 'default'
+      case 'user': return 'secondary'
+      default: return 'outline'
+    }
   }
 
   const getRoleDisplayName = (role: string) => {
-    return role === 'admin' ? 'Administrator' : 'User'
+    switch (role) {
+      case 'admin': return 'Administrator'
+      case 'user': return 'User'
+      default: return role.charAt(0).toUpperCase() + role.slice(1)
+    }
   }
 
   if (loading) {
     return (
       <AdminLayout>
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading users...</p>
+        <div className="flex items-center justify-center min-h-96">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+            <p className="text-gray-600">Loading users...</p>
+          </div>
         </div>
       </AdminLayout>
     )
@@ -118,7 +149,7 @@ export default function UsersPage() {
             </div>
             <div className="flex items-center space-x-2">
               <Badge variant="outline" className="text-sm">
-                {users.length} Total Users
+                {users.length} {users.length === 1 ? 'User' : 'Users'}
               </Badge>
             </div>
           </div>
@@ -132,10 +163,24 @@ export default function UsersPage() {
                   <Input
                     placeholder="Search users by email, name, or role..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => handleSearch(e.target.value)}
                     className="pl-10"
                   />
                 </div>
+                {searchLoading && (
+                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                )}
+                {searchTerm && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearchTerm("")
+                      loadUsers()
+                    }}
+                  >
+                    Clear
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -156,18 +201,19 @@ export default function UsersPage() {
                     <TableHead>Email</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Joined</TableHead>
+                    <TableHead>Last Updated</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredUsers.length === 0 ? (
+                  {users.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                         {searchTerm ? 'No users found matching your search.' : 'No users found.'}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredUsers.map((user) => (
+                    users.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell>
                           <div className="flex items-center space-x-3">
@@ -178,7 +224,7 @@ export default function UsersPage() {
                               <p className="font-medium text-gray-900">
                                 {user.display_name || 'No Name'}
                               </p>
-                              <p className="text-sm text-gray-500">ID: {user.id.slice(0, 8)}...</p>
+                              <p className="text-xs text-gray-500">ID: {user.id.slice(0, 8)}...</p>
                             </div>
                           </div>
                         </TableCell>
@@ -214,6 +260,11 @@ export default function UsersPage() {
                           </div>
                         </TableCell>
                         <TableCell>
+                          <span className="text-sm">
+                            {new Date(user.updated_at).toLocaleDateString()}
+                          </span>
+                        </TableCell>
+                        <TableCell>
                           {editingUser === user.id ? (
                             <div className="flex items-center space-x-2">
                               <Button
@@ -221,13 +272,18 @@ export default function UsersPage() {
                                 onClick={() => handleSaveRole(user.id)}
                                 disabled={updating}
                               >
-                                <Save className="w-4 h-4 mr-1" />
+                                {updating ? (
+                                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                ) : (
+                                  <Save className="w-4 h-4 mr-1" />
+                                )}
                                 Save
                               </Button>
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={handleCancelEdit}
+                                disabled={updating}
                               >
                                 <X className="w-4 h-4 mr-1" />
                                 Cancel
