@@ -1,4 +1,4 @@
-import {supabase} from "@/lib/supabase-client"
+import { supabase } from "@/lib/supabase-client"
 import type { 
   Auction, 
   Bid, 
@@ -31,24 +31,30 @@ export class DatabaseService {
   }
 
   async getBidById(id: string): Promise<Bid | null> {
-  const { data, error } = await supabase
-    .from('bids')
-    .select('*')
-    .eq('id', id)
-    .single()
+    const { data, error } = await supabase
+      .from('bids')
+      .select(`
+        *,
+        bidder:profiles(*)
+      `)
+      .eq('id', id)
+      .single()
 
-  if (error) {
-    console.error('Error fetching bid:', error)
-    return null
-  }
+    if (error) {
+      console.error('Error fetching bid:', error)
+      return null
+    }
 
-  return data
+    return data
   }
 
   async getUserBids(userId: string): Promise<Bid[]> {
     const { data, error } = await supabase
       .from('bids')
-      .select('*')
+      .select(`
+        *,
+        bidder:profiles(*)
+      `)
       .eq('bidder_id', userId)
       .order('created_at', { ascending: false })
 
@@ -173,7 +179,7 @@ export class DatabaseService {
 
   // Bid operations
   async getBidsByAuction(auctionId: string): Promise<Bid[]> {
-    const { data, error } = await supabase
+    const { data: bids, error } = await supabase
       .from('bids')
       .select('*')
       .eq('auction_id', auctionId)
@@ -184,7 +190,25 @@ export class DatabaseService {
       return []
     }
 
-    return data
+    if (bids && bids.length > 0) {
+      const profileIds = bids.map(b => b.bidder_id)
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .in('id', profileIds)
+
+      if (profileError) {
+        console.error('Error fetching profiles for bids:', profileError)
+        return bids
+      }
+
+      const profileMap = Object.fromEntries(profiles.map(p => [p.id, p]))
+      bids.forEach(bid => {
+        (bid as any).bidder = profileMap[bid.bidder_id] || null
+      })
+    }
+
+    return bids || []
   }
 
   async createBid(bid: Omit<Bid, 'id' | 'created_at'>): Promise<Bid | null> {
