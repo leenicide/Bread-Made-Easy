@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { auctionService } from "@/lib/auction-service"
 import { funnelService } from "@/lib/funnel-service"
 import type { Auction, Funnel } from "@/lib/types"
-import { Plus, Search, Edit, Eye, Pause, Play, X, Save } from "lucide-react"
+import { Plus, Search, Edit, Eye, Pause, Play, X, Save, Trash } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -158,6 +158,34 @@ export default function AdminAuctionsPage() {
         a.id === auction.id ? { ...a, status: auction.status } : a
       ));
       console.error("Status update failed:", error);
+    }
+  };
+
+  // Add this function to handle ending the auction
+  const handleEndAuction = async (auction: Auction) => {
+    try {
+      // Update UI immediately
+      setAuctions(auctions.map(a => 
+        a.id === auction.id ? { ...a, status: "ended" } : a
+      ));
+      
+      // Send update to server
+      const updatedAuction = await auctionService.updateAuction(auction.id, { 
+        status: "ended",
+        // Include these fields to prevent the trigger from overriding
+        starts_at: auction.starts_at,
+        ends_at: new Date() // Set end date to now
+      });
+      
+      if (!updatedAuction) {
+        throw new Error("Failed to end auction");
+      }
+    } catch (error) {
+      // Revert on error
+      setAuctions(auctions.map(a => 
+        a.id === auction.id ? { ...a, status: auction.status } : a
+      ));
+      console.error("Failed to end auction:", error);
     }
   };
 
@@ -327,6 +355,18 @@ export default function AdminAuctionsPage() {
                       Resume
                     </Button>
                   ) : null}
+                  {/* Add this delete/end auction button */}
+                  {auction.status !== "ended" && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="bg-transparent text-destructive hover:text-destructive"
+                      onClick={() => handleEndAuction(auction)}
+                    >
+                      <Trash className="h-4 w-4 mr-2" />
+                      End Auction
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
