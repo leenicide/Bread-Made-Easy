@@ -30,6 +30,36 @@ export class DatabaseService {
     return data || []
   }
 
+  async getBidById(id: string): Promise<Bid | null> {
+  const { data, error } = await supabase
+    .from('bids')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (error) {
+    console.error('Error fetching bid:', error)
+    return null
+  }
+
+  return data
+  }
+
+  async getUserBids(userId: string): Promise<Bid[]> {
+    const { data, error } = await supabase
+      .from('bids')
+      .select('*')
+      .eq('bidder_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching user bids:', error)
+      return []
+    }
+
+    return data
+  }
+
   async getFunnelById(id: string): Promise<Funnel | null> {
     const { data, error } = await supabase
       .from('funnels')

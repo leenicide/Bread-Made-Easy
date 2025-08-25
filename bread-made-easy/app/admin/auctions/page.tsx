@@ -7,9 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { auctionService } from "@/lib/auction-service"
+import { bidService } from "@/lib/bid-service"
 import { funnelService } from "@/lib/funnel-service"
-import type { Auction, Funnel } from "@/lib/types"
-import { Plus, Search, Edit, Eye, Pause, Play, X, Save, Trash } from "lucide-react"
+import type { Auction, Funnel, Bid } from "@/lib/types"
+import { Plus, Search, Edit, Eye, Pause, Play, X, Save, Trash, Users, Trophy } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -21,16 +22,27 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import Link from "next/link"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 export default function AdminAuctionsPage() {
   const [auctions, setAuctions] = useState<Auction[]>([])
   const [funnels, setFunnels] = useState<Funnel[]>([])
+  const [bids, setBids] = useState<Record<string, Bid[]>>({})
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [editingAuction, setEditingAuction] = useState<Auction | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [isBiddersDialogOpen, setIsBiddersDialogOpen] = useState(false)
+  const [selectedAuction, setSelectedAuction] = useState<Auction | null>(null)
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -60,6 +72,14 @@ export default function AdminAuctionsPage() {
         ])
         setAuctions(auctionsData)
         setFunnels(funnelsData)
+        
+        // Fetch bids for each auction
+        const bidsMap: Record<string, Bid[]> = {}
+        for (const auction of auctionsData) {
+          const auctionBids = await bidService.getBidsByAuction(auction.id)
+          bidsMap[auction.id] = auctionBids
+        }
+        setBids(bidsMap)
       } catch (error) {
         console.error("Failed to fetch auctions or funnels:", error)
       } finally {
@@ -68,6 +88,11 @@ export default function AdminAuctionsPage() {
     }
     fetchData()
   }, [])
+
+  const handleViewBidders = (auction: Auction) => {
+    setSelectedAuction(auction)
+    setIsBiddersDialogOpen(true)
+  }
 
   const handleEditClick = (auction: Auction) => {
     setEditingAuction(auction)
@@ -264,114 +289,201 @@ export default function AdminAuctionsPage() {
 
         {/* Auction Cards */}
         <div className="grid gap-4">
-          {filteredAuctions.map((auction) => (
-            <Card key={auction.id}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <CardTitle className="text-lg">{auction.title || "Untitled Auction"}</CardTitle>
-                    <CardDescription className="line-clamp-2">
-                      {auction.description || "No description available"}
-                    </CardDescription>
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        variant={
-                          auction.status === "active"
-                            ? "default"
-                            : auction.status === "ended"
-                              ? "destructive"
-                              : "secondary"
-                        }
-                      >
-                        {auction.status}
-                      </Badge>
+          {filteredAuctions.map((auction) => {
+            const auctionBids = bids[auction.id] || []
+            const winningBid = auction.winning_bid_id 
+              ? auctionBids.find(bid => bid.id === auction.winning_bid_id)
+              : null
+              
+            return (
+              <Card key={auction.id}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-2">
+                      <CardTitle className="text-lg">{auction.title || "Untitled Auction"}</CardTitle>
+                      <CardDescription className="line-clamp-2">
+                        {auction.description || "No description available"}
+                      </CardDescription>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={
+                            auction.status === "active"
+                              ? "default"
+                              : auction.status === "ended"
+                                ? "destructive"
+                                : "secondary"
+                          }
+                        >
+                          {auction.status}
+                        </Badge>
+                        {winningBid && (
+                          <Badge className="bg-green-500 text-white flex items-center gap-1">
+                            <Trophy className="h-3 w-3" />
+                            Winner: {winningBid.bidder?.display_name || "Unknown"}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="aspect-video w-32 bg-muted rounded overflow-hidden">
+                      <img
+                        src={auction.funnel?.image_url || "/placeholder.svg"}
+                        alt={auction.title || "Auction image"}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                   </div>
-                  <div className="aspect-video w-32 bg-muted rounded overflow-hidden">
-                    <img
-                      src={auction.funnel?.image_url || "/placeholder.svg"}
-                      alt={auction.title || "Auction image"}
-                      className="w-full h-full object-cover"
-                    />
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-5 gap-4 mb-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Current Price</p>
+                      <p className="font-semibold">${auction.current_price}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Starting Price</p>
+                      <p className="font-semibold">${auction.starting_price}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Buy Now Price</p>
+                      <p className="font-semibold">${auction.buy_now || "N/A"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Bids</p>
+                      <p className="font-semibold">{auctionBids.length}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Ends</p>
+                      <p className="font-semibold">
+                        {auction.ends_at ? new Date(auction.ends_at).toLocaleDateString() : "N/A"}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-4 gap-4 mb-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Current Price</p>
-                    <p className="font-semibold">${auction.current_price}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Starting Price</p>
-                    <p className="font-semibold">${auction.starting_price}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Buy Now Price</p>
-                    <p className="font-semibold">${auction.buy_now || "N/A"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Ends</p>
-                    <p className="font-semibold">
-                      {auction.ends_at ? new Date(auction.ends_at).toLocaleDateString() : "N/A"}
-                    </p>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="bg-transparent" asChild>
-                    <Link href={`/auctions/${auction.id}`}>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-transparent"
+                      onClick={() => handleViewBidders(auction)}
+                    >
                       <Eye className="h-4 w-4 mr-2" />
-                      View
-                    </Link>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-transparent"
-                    onClick={() => handleEditClick(auction)}
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit
-                  </Button>
-                  {auction.status === "active" ? (
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                      View Bidders
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       className="bg-transparent"
-                      onClick={() => handleStatusToggle(auction)}
+                      onClick={() => handleEditClick(auction)}
                     >
-                      <Pause className="h-4 w-4 mr-2" />
-                      Pause
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
                     </Button>
-                  ) : auction.status === "draft" ? (
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="bg-transparent"
-                      onClick={() => handleStatusToggle(auction)}
-                    >
-                      <Play className="h-4 w-4 mr-2" />
-                      Resume
-                    </Button>
-                  ) : null}
-                  {/* Add this delete/end auction button */}
-                  {auction.status !== "ended" && (
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="bg-transparent text-destructive hover:text-destructive"
-                      onClick={() => handleEndAuction(auction)}
-                    >
-                      <Trash className="h-4 w-4 mr-2" />
-                      End Auction
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    {auction.status === "active" ? (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-transparent"
+                        onClick={() => handleStatusToggle(auction)}
+                      >
+                        <Pause className="h-4 w-4 mr-2" />
+                        Pause
+                      </Button>
+                    ) : auction.status === "draft" ? (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-transparent"
+                        onClick={() => handleStatusToggle(auction)}
+                      >
+                        <Play className="h-4 w-4 mr-2" />
+                        Resume
+                      </Button>
+                    ) : null}
+                    {/* Add this delete/end auction button */}
+                    {auction.status !== "ended" && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-transparent text-destructive hover:text-destructive"
+                        onClick={() => handleEndAuction(auction)}
+                      >
+                        <Trash className="h-4 w-4 mr-2" />
+                        End Auction
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
+
+        {/* Bidders Dialog */}
+        <Dialog open={isBiddersDialogOpen} onOpenChange={setIsBiddersDialogOpen}>
+          <DialogContent className="sm:max-w-[700px]">
+            <DialogHeader>
+              <DialogTitle>
+                {selectedAuction?.title || "Auction"} - Bidders
+                {selectedAuction?.winning_bid_id && (
+                  <Badge variant="secondary" className="ml-2">
+                    Winner Selected
+                  </Badge>
+                )}
+              </DialogTitle>
+              <DialogDescription>
+                View all bidders for this auction
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[400px] overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Bidder</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {selectedAuction && bids[selectedAuction.id]?.map((bid) => (
+                    <TableRow key={bid.id} className={
+                      selectedAuction.winning_bid_id === bid.id ? "bg-muted/50" : ""
+                    }>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-8 w-8">
+                            {/* <AvatarImage src={bid.bidder?.avatar_url} /> */}
+                            <AvatarFallback>
+                              {bid.bidder?.display_name?.charAt(0) || "U"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{bid.bidder?.display_name || "Unknown"}</p>
+                            <p className="text-sm text-muted-foreground">{bid.bidder?.email}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium">${bid.amount}</TableCell>
+                      <TableCell>
+                        {new Date(bid.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        {selectedAuction.winning_bid_id === bid.id ? (
+                          <Badge className="bg-green-500">Winner</Badge>
+                        ) : (
+                          <Badge variant="outline">Bid</Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setIsBiddersDialogOpen(false)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Edit Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
