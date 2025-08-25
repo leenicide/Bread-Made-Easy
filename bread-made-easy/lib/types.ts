@@ -124,7 +124,7 @@ export interface Lead {
   id: string
   email: string
   phone_number?: string
-  username?: string
+  username: string | null; // make sure it's `null` instead of `undefined`
   created_at: Date
   updated_at: Date
 }
