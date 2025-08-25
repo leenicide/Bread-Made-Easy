@@ -13,11 +13,11 @@ import {
   DollarSign, 
   Settings,
   LogOut,
-  User,
+  User as UserIcon, // ← Rename the icon import
   Shield
 } from "lucide-react"
 import { authService } from "@/lib/auth"
-import type { User } from "@/lib/types"
+import type { User } from "@/lib/types" // ← This stays as User type
 
 interface AdminSidebarProps {
   user: User
@@ -109,7 +109,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
         <div className="bg-gray-50 rounded-lg p-4 mb-6">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-              <User className="w-5 h-5 text-gray-600" />
+              <UserIcon className="w-5 h-5 text-gray-600" /> {/* ← Use the renamed icon */}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">
@@ -122,9 +122,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
                 >
                   {user.role === 'admin' ? 'Administrator' : 'User'}
                 </Badge>
-                <span className="text-xs text-gray-500">
-                  {user.email}
-                </span>
+  
               </div>
             </div>
           </div>
