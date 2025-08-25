@@ -87,18 +87,27 @@ export class DatabaseService {
       .select(`
         *,
         funnel:funnels(*),
-        winning_bid:bids!winning_bid_id(*),
-        bids:bids(*)
+        winning_bid:bids!winning_bid_id(*)
       `)
       .eq('id', id)
       .single()
-
+  
     if (error) {
       console.error('Error fetching auction:', error)
       return null
     }
-
-    return data
+  
+    // Get bids separately to avoid the relationship conflict
+    const { data: bidsData } = await supabase
+      .from('bids')
+      .select('*')
+      .eq('auction_id', id)
+      .order('amount', { ascending: false })
+  
+    return {
+      ...data,
+      bids: bidsData || []
+    }
   }
 
   async createAuction(auction: Omit<Auction, 'id' | 'created_at' | 'updated_at'>): Promise<Auction | null> {
