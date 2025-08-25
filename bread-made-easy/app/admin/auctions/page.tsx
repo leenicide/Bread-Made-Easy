@@ -136,32 +136,30 @@ export default function AdminAuctionsPage() {
     try {
       const newStatus = auction.status === "active" ? "draft" : "active";
       
-      // Update the UI optimistically first
+      // Update UI immediately
       setAuctions(auctions.map(a => 
         a.id === auction.id ? { ...a, status: newStatus } : a
       ));
       
-      // Then update the database
-      const updatedAuction = await auctionService.updateAuction(auction.id, { status: newStatus });
+      // Send update to server - ensure we're sending all required fields
+      const updatedAuction = await auctionService.updateAuction(auction.id, { 
+        status: newStatus,
+        // Include these fields to prevent the trigger from overriding
+        starts_at: auction.starts_at,
+        ends_at: auction.ends_at
+      });
       
-      if (updatedAuction) {
-        // Update with the actual response from the server
-        setAuctions(auctions.map(a => a.id === auction.id ? updatedAuction : a));
-      } else {
-        // If the update failed, revert the UI change
-        setAuctions(auctions.map(a => 
-          a.id === auction.id ? { ...a, status: auction.status } : a
-        ));
-        console.error("Failed to update auction status");
+      if (!updatedAuction) {
+        throw new Error("Failed to update status");
       }
     } catch (error) {
-      // If there's an error, revert the UI change
+      // Revert on error
       setAuctions(auctions.map(a => 
         a.id === auction.id ? { ...a, status: auction.status } : a
       ));
-      console.error("Failed to update auction status:", error);
+      console.error("Status update failed:", error);
     }
-  }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
