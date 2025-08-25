@@ -33,20 +33,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    // Check for existing user on mount
-    const currentUser = authService.getCurrentUser()
-    setUser(currentUser)
-    
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
-        // Get user profile from database
         const { data: profile, error } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
           .single()
-          
+
         if (profile && !error) {
           const userData: User = {
             id: session.user.id,
@@ -54,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             display_name: profile.display_name,
             role: profile.role,
             created_at: profile.created_at,
-            updated_at: profile.updated_at
+            updated_at: profile.updated_at,
           }
           setUser(userData)
           localStorage.setItem("auth_user", JSON.stringify(userData))
@@ -64,12 +59,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem("auth_user")
       }
       setLoading(false)
+    }
+
+    init()
+
+    // Subscribe to auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      init()
     })
 
-    return () => {
-      subscription.unsubscribe()
-    }
+    return () => subscription.unsubscribe()
   }, [])
+
 
   const login = async (email: string, password: string): Promise<AuthResponse> => {
     const response = await authService.login(email, password)
