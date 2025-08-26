@@ -45,12 +45,16 @@ export function RequestTracker({ userId }: RequestTrackerProps) {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "pending":
-        return <AlertCircle className="h-4 w-4 text-orange-500" />
+        return <Clock className="h-4 w-4 text-orange-500" />
+      case "reviewing":
+        return <AlertCircle className="h-4 w-4 text-blue-500" />
+      case "approved":
+        return <CheckCircle className="h-4 w-4 text-green-500" />
       case "in_progress":
         return <Clock className="h-4 w-4 text-blue-500" />
       case "completed":
         return <CheckCircle className="h-4 w-4 text-green-500" />
-      case "cancelled":
+      case "rejected":
         return <AlertCircle className="h-4 w-4 text-red-500" />
       default:
         return <Clock className="h-4 w-4 text-gray-500" />
@@ -60,12 +64,16 @@ export function RequestTracker({ userId }: RequestTrackerProps) {
   const getStatusProgress = (status: string) => {
     switch (status) {
       case "pending":
+        return 10
+      case "reviewing":
         return 25
+      case "approved":
+        return 50
       case "in_progress":
-        return 60
+        return 75
       case "completed":
         return 100
-      case "cancelled":
+      case "rejected":
         return 0
       default:
         return 0
