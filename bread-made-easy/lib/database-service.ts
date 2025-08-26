@@ -193,6 +193,45 @@ export class DatabaseService {
     return data
   }
 
+
+  // In your database-service.ts file
+  async getBids(): Promise<Bid[]> {
+    try {
+      const { data: bids, error } = await supabase
+        .from('bids')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching all bids:', error)
+        return []
+      }
+
+      if (bids && bids.length > 0) {
+        const profileIds = bids.map(b => b.bidder_id)
+        const { data: profiles, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, display_name')
+          .in('id', profileIds)
+
+        if (profileError) {
+          console.error('Error fetching profiles for bids:', profileError)
+          return bids
+        }
+
+        const profileMap = Object.fromEntries(profiles.map(p => [p.id, p]))
+        bids.forEach(bid => {
+          (bid as any).bidder = profileMap[bid.bidder_id] || null
+        })
+      }
+
+      return bids || []
+    } catch (error) {
+      console.error('Error in getBids:', error)
+      return []
+    }
+  }
+
   // Bid operations
   async getBidsByAuction(auctionId: string): Promise<Bid[]> {
     const { data: bids, error } = await supabase

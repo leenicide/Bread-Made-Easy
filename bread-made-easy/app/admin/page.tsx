@@ -7,9 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { adminService } from "@/lib/admin-service"
-import type { Purchase, CustomRequest } from "@/lib/types"
+import { userService } from "@/lib/user-service"
+import { bidService } from "@/lib/bid-service"
+import type { Purchase, CustomRequest, User, Bid } from "@/lib/types"
 import { formatDistanceToNow } from "date-fns"
-import { Eye, DollarSign, Clock, MessageSquare, Activity, Gavel, Users, Plus, Minus } from "lucide-react"
+import { Eye, DollarSign, Clock, MessageSquare, Activity, Gavel, Users, Plus, Minus, User as UserIcon } from "lucide-react"
 
 interface ActivityEvent {
   id: string
@@ -25,23 +27,39 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null)
   const [recentPurchases, setRecentPurchases] = useState<Purchase[]>([])
   const [customRequests, setCustomRequests] = useState<CustomRequest[]>([])
+  const [allUsers, setAllUsers] = useState<User[]>([])
+  const [recentBids, setRecentBids] = useState<Bid[]>([])
   const [activities, setActivities] = useState<ActivityEvent[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsData, purchasesData, requestsData, activitiesData] = await Promise.all([
+        const [statsData, purchasesData, requestsData, usersData, bidsData] = await Promise.all([
           adminService.getDashboardStats(),
           adminService.getRecentPurchases(),
           adminService.getCustomRequests(),
-          adminService.getRecentActivities(), // You'll need to implement this
+          userService.getAllUsers(),
+          bidService.getLegacyBids().then(bids => 
+            bids.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 10)
+          ),
         ])
 
         setStats(statsData)
         setRecentPurchases(purchasesData)
         setCustomRequests(requestsData)
-        setActivities(activitiesData)
+        setAllUsers(usersData)
+        setRecentBids(bidsData)
+
+        // Generate activities from various sources
+        const generatedActivities = await generateActivities(
+          statsData,
+          purchasesData,
+          requestsData,
+          usersData,
+          bidsData
+        )
+        setActivities(generatedActivities)
       } catch (error) {
         console.error("Failed to fetch admin data:", error)
       } finally {
@@ -50,41 +68,77 @@ export default function AdminDashboard() {
     }
 
     fetchData()
-    
-    // Set up real-time subscriptions (pseudo-code)
-    const subscriptions = [
-      // Subscribe to auction events
-      adminService.subscribeToAuctions((event) => {
-        setActivities(prev => [createActivityEvent(event), ...prev.slice(0, 9)])
-      }),
-      // Subscribe to bid events
-      adminService.subscribeToBids((event) => {
-        setActivities(prev => [createActivityEvent(event), ...prev.slice(0, 9)])
-      }),
-      // Subscribe to funnel events
-      adminService.subscribeToFunnels((event) => {
-        setActivities(prev => [createActivityEvent(event), ...prev.slice(0, 9)])
-      }),
-      // Subscribe to user events
-      adminService.subscribeToUsers((event) => {
-        setActivities(prev => [createActivityEvent(event), ...prev.slice(0, 9)])
-      }),
-      // Subscribe to lead events
-      adminService.subscribeToLeads((event) => {
-        setActivities(prev => [createActivityEvent(event), ...prev.slice(0, 9)])
-      })
-    ]
-
-    return () => {
-      // Clean up subscriptions
-      subscriptions.forEach(unsubscribe => unsubscribe())
-    }
   }, [])
 
-  const createActivityEvent = (event: any): ActivityEvent => {
-    // This would transform raw database events into ActivityEvent objects
-    // Implementation depends on your real-time service
-    return event
+  const generateActivities = async (
+    statsData: any,
+    purchasesData: Purchase[],
+    requestsData: CustomRequest[],
+    usersData: User[],
+    bidsData: Bid[]
+  ): Promise<ActivityEvent[]> => {
+    const activities: ActivityEvent[] = []
+
+    // Add user signup activities
+    const recentUsers = usersData
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 3)
+    
+    recentUsers.forEach(user => {
+      activities.push({
+        id: `user_${user.id}`,
+        type: 'user',
+        action: 'created',
+        title: 'New User Signup',
+        description: `${user.display_name || 'New user'} signed up`,
+        timestamp: new Date(user.created_at),
+        metadata: { user }
+      })
+    })
+
+    // Add bid activities
+    bidsData.forEach(bid => {
+      activities.push({
+        id: `bid_${bid.id}`,
+        type: 'bid',
+        action: 'created',
+        title: 'New Bid Placed',
+        description: `Bid of $${bid.amount} placed on auction`,
+        timestamp: new Date(bid.created_at),
+        metadata: { bid }
+      })
+    })
+
+    // Add purchase activities
+    purchasesData.slice(0, 3).forEach(purchase => {
+      activities.push({
+        id: `purchase_${purchase.id}`,
+        type: 'purchase',
+        action: 'completed',
+        title: 'New Purchase',
+        description: `Purchase of $${purchase.amount} completed`,
+        timestamp: new Date(purchase.created_at),
+        metadata: { purchase }
+      })
+    })
+
+    // Add custom request activities
+    requestsData.slice(0, 3).forEach(request => {
+      activities.push({
+        id: `request_${request.id}`,
+        type: 'custom_request',
+        action: 'created',
+        title: 'New Custom Request',
+        description: `${request.name} submitted a request for ${request.projecttype}`,
+        timestamp: new Date(request.created_at),
+        metadata: { request }
+      })
+    })
+
+    // Sort by timestamp and limit to 10
+    return activities
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 10)
   }
 
   const getActivityIcon = (type: string) => {
@@ -92,7 +146,7 @@ export default function AdminDashboard() {
       case 'auction': return <Gavel className="h-4 w-4" />
       case 'bid': return <DollarSign className="h-4 w-4" />
       case 'funnel': return <Activity className="h-4 w-4" />
-      case 'user': return <Users className="h-4 w-4" />
+      case 'user': return <UserIcon className="h-4 w-4" />
       case 'lead': return <Users className="h-4 w-4" />
       case 'purchase': return <DollarSign className="h-4 w-4" />
       case 'custom_request': return <MessageSquare className="h-4 w-4" />
@@ -134,7 +188,7 @@ export default function AdminDashboard() {
           <p className="text-muted-foreground">Overview of your marketplace performance</p>
         </div>
 
-        {stats && <StatsCards stats={stats} />}
+        {stats && <StatsCards stats={{ ...stats, totalUsers: allUsers.length }} />}
 
         <div className="grid gap-6 lg:grid-cols-3">
           <Card className="lg:col-span-2">
@@ -160,11 +214,13 @@ export default function AdminDashboard() {
                             : "Direct"}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(purchase.created_at, { addSuffix: true })}
+                          {formatDistanceToNow(new Date(purchase.created_at), { addSuffix: true })}
                         </span>
                       </div>
                     </div>
-                    <Badge variant={purchase.status === "completed" ? "default" : "secondary"}>{purchase.status}</Badge>
+                    <Badge variant={purchase.payment_status === "completed" ? "default" : "secondary"}>
+                      {purchase.payment_status}
+                    </Badge>
                   </div>
                 ))}
                 <Button variant="outline" className="w-full bg-transparent">
@@ -188,10 +244,10 @@ export default function AdminDashboard() {
                 {customRequests.map((request) => (
                   <div key={request.id} className="p-3 border rounded-lg space-y-2">
                     <div className="flex items-start justify-between">
-                      <h4 className="font-medium text-sm line-clamp-1">{request.title}</h4>
+                      <h4 className="font-medium text-sm line-clamp-1">{request.projecttype}</h4>
                       <Badge
                         variant={
-                          request.status === "open"
+                          request.status === "pending"
                             ? "destructive"
                             : request.status === "in_progress"
                               ? "default"
@@ -202,12 +258,12 @@ export default function AdminDashboard() {
                         {request.status.replace("_", " ")}
                       </Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2">{request.description}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{request.additionalnotes || "No description"}</p>
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-medium">${request.budget}</span>
                       <div className="flex items-center gap-1 text-muted-foreground">
                         <Clock className="h-3 w-3" />
-                        {formatDistanceToNow(request.created_at, { addSuffix: true })}
+                        {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
                       </div>
                     </div>
                   </div>
@@ -221,7 +277,7 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        {/* New Activity Feed Section */}
+        {/* Activity Feed Section */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -258,6 +314,46 @@ export default function AdminDashboard() {
               {activities.length === 0 && (
                 <p className="text-center text-muted-foreground py-4">No recent activity</p>
               )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Bids Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Gavel className="h-5 w-5" />
+              Recent Bids
+            </CardTitle>
+            <CardDescription>Latest bids placed on auctions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {recentBids.map((bid) => (
+                <div key={bid.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="space-y-1">
+                    <p className="font-medium">${bid.amount}</p>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs">
+                        Bid
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(bid.created_at), { addSuffix: true })}
+                      </span>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    Auction: {bid.auction_id?.slice(0, 8)}...
+                  </Badge>
+                </div>
+              ))}
+              {recentBids.length === 0 && (
+                <p className="text-center text-muted-foreground py-4">No recent bids</p>
+              )}
+              <Button variant="outline" className="w-full bg-transparent">
+                <Eye className="h-4 w-4 mr-2" />
+                View All Bids
+              </Button>
             </div>
           </CardContent>
         </Card>
