@@ -136,7 +136,7 @@ function DashboardContent() {
                     </Link>
                   </Button>
 
-                  <Button asChild variant="outline" className="justify-start h-auto p-4 bg-transparent">
+                  {/* <Button asChild variant="outline" className="justify-start h-auto p-4 bg-transparent">
                     <Link href="/buy-now">
                       <ShoppingBag className="h-5 w-5 mr-3" />
                       <div className="text-left">
@@ -144,7 +144,7 @@ function DashboardContent() {
                         <div className="text-xs text-muted-foreground">Instant access to ready-made funnels</div>
                       </div>
                     </Link>
-                  </Button>
+                  </Button> */}
 
                   <Button asChild variant="outline" className="justify-start h-auto p-4 bg-transparent">
                     <Link href="/custom-request">
