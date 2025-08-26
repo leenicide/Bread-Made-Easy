@@ -74,6 +74,7 @@ export interface Auction {
 }
 
 export interface Bid {
+  status: string
   id: string
   auction_id: string
   bidder_id: string

@@ -6,13 +6,14 @@ import { StatsCards } from "@/components/admin/stats-cards"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { adminService } from "@/lib/admin-service"
 import { userService } from "@/lib/user-service"
 import { bidService } from "@/lib/bid-service"
 import { auctionService } from "@/lib/auction-service"
 import type { Purchase, CustomRequest, User, Bid, Auction } from "@/lib/types"
 import { formatDistanceToNow } from "date-fns"
-import { Eye, DollarSign, Clock, MessageSquare, Activity, Gavel, Users, Plus, Minus, User as UserIcon } from "lucide-react"
+import { Eye, DollarSign, Clock, MessageSquare, Activity, Gavel, Users, Plus, Minus, User as UserIcon, X } from "lucide-react"
 
 interface ActivityEvent {
   id: string
@@ -30,11 +31,12 @@ export default function AdminDashboard() {
   const [customRequests, setCustomRequests] = useState<CustomRequest[]>([])
   const [allUsers, setAllUsers] = useState<User[]>([])
   const [recentBids, setRecentBids] = useState<Bid[]>([])
+  const [allBids, setAllBids] = useState<Bid[]>([])
   const [auctions, setAuctions] = useState<Auction[]>([])
   const [activities, setActivities] = useState<ActivityEvent[]>([])
   const [loading, setLoading] = useState(true)
-  const [showAllRequests, setShowAllRequests] = useState(false)
-  const [showAllBids, setShowAllBids] = useState(false)
+  const [showRequestsModal, setShowRequestsModal] = useState(false)
+  const [showBidsModal, setShowBidsModal] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -54,20 +56,23 @@ export default function AdminDashboard() {
         setAuctions(auctionsData)
 
         // Fetch bids for all auctions
-        const allBids: Bid[] = []
+        const allBidsData: Bid[] = []
         for (const auction of auctionsData) {
           try {
             const auctionBids = await bidService.getBidsByAuction(auction.id)
-            allBids.push(...auctionBids)
+            allBidsData.push(...auctionBids)
           } catch (error) {
             console.error(`Failed to fetch bids for auction ${auction.id}:`, error)
           }
         }
         
+        // Store all bids
+        setAllBids(allBidsData)
+        
         // Sort bids by date and get the most recent ones
-        const sortedBids = allBids.sort((a, b) => 
+        const sortedBids = allBidsData.sort((a, b) => 
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        )
+        ).slice(0, 5)
         
         setRecentBids(sortedBids)
 
@@ -261,7 +266,7 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {(showAllRequests ? customRequests : customRequests.slice(0, 3)).map((request) => (
+                {customRequests.slice(0, 3).map((request) => (
                   <div key={request.id} className="p-3 border rounded-lg space-y-2">
                     <div className="flex items-start justify-between">
                       <h4 className="font-medium text-sm line-clamp-1">{request.projecttype}</h4>
@@ -291,109 +296,208 @@ export default function AdminDashboard() {
                 <Button 
                   variant="outline" 
                   className="w-full bg-transparent"
-                  onClick={() => setShowAllRequests(!showAllRequests)}
+                  onClick={() => setShowRequestsModal(true)}
                 >
                   <Eye className="h-4 w-4 mr-2" />
-                  {showAllRequests ? 'Show Less Requests' : 'View All Requests'}
+                  View All Requests
                 </Button>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Activity Feed Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5" />
-              Recent Activity
-            </CardTitle>
-            <CardDescription>Real-time updates from your database</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {activities.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-3 p-3 border rounded-lg">
-                  <div className="flex-shrink-0 mt-1">
-                    {getActivityIcon(activity.type)}
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">{activity.title}</span>
-                      <span className="flex items-center gap-1">
-                        {getActionIcon(activity.action)}
-                        <Badge variant="outline" className="text-xs">
-                          {activity.type}
-                        </Badge>
-                      </span>
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Recent Bids Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Gavel className="h-5 w-5" />
+                Recent Bids
+              </CardTitle>
+              <CardDescription>Latest bids placed on auctions</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {recentBids.map((bid) => {
+                  // Find the auction for this bid
+                  const auction = auctions.find(a => a.id === bid.auction_id);
+                  return (
+                    <div key={bid.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="space-y-1">
+                        <p className="font-medium">${bid.amount}</p>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-xs">
+                            Bid
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(bid.created_at), { addSuffix: true })}
+                          </span>
+                        </div>
+                        {auction && (
+                          <p className="text-xs text-muted-foreground">
+                            On: {auction.title || `Auction ${auction.id.slice(0, 8)}`}
+                          </p>
+                        )}
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        By: {bid.bidder?.display_name || "Unknown"}
+                      </Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground">{activity.description}</p>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  )
+                })}
+                {recentBids.length === 0 && (
+                  <p className="text-center text-muted-foreground py-4">No recent bids</p>
+                )}
+                <Button 
+                  variant="outline" 
+                  className="w-full bg-transparent"
+                  onClick={() => setShowBidsModal(true)}
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  View All Bids
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Activity Feed Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                Recent Activity
+              </CardTitle>
+              <CardDescription>Real-time updates from your database</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {activities.map((activity) => (
+                  <div key={activity.id} className="flex items-start gap-3 p-3 border rounded-lg">
+                    <div className="flex-shrink-0 mt-1">
+                      {getActivityIcon(activity.type)}
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">{activity.title}</span>
+                        <span className="flex items-center gap-1">
+                          {getActionIcon(activity.action)}
+                          <Badge variant="outline" className="text-xs">
+                            {activity.type}
+                          </Badge>
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{activity.description}</p>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        {formatDistanceToNow(activity.timestamp, { addSuffix: true })}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {activities.length === 0 && (
+                  <p className="text-center text-muted-foreground py-4">No recent activity</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* All Requests Modal */}
+        <Dialog open={showRequestsModal} onOpenChange={setShowRequestsModal}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>All Custom Requests</DialogTitle>
+              <DialogDescription>
+                Complete list of all custom project requests from clients
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              {customRequests.map((request) => (
+                <div key={request.id} className="p-4 border rounded-lg space-y-3">
+                  <div className="flex items-start justify-between">
+                    <h4 className="font-medium">{request.projecttype}</h4>
+                    <Badge
+                      variant={
+                        request.status === "pending"
+                          ? "destructive"
+                          : request.status === "in_progress"
+                            ? "default"
+                            : "secondary"
+                      }
+                    >
+                      {request.status.replace("_", " ")}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Client: {request.name}</p>
+                    <p className="text-sm text-muted-foreground">Email: {request.email}</p>
+                    <p className="text-sm text-muted-foreground">Phone: {request.phone || "Not provided"}</p>
+                  </div>
+                  {request.additionalnotes && (
+                    <div>
+                      <p className="text-sm font-medium">Notes:</p>
+                      <p className="text-sm text-muted-foreground">{request.additionalnotes}</p>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium">Budget: ${request.budget}</span>
+                    <div className="flex items-center gap-1 text-muted-foreground">
                       <Clock className="h-3 w-3" />
-                      {formatDistanceToNow(activity.timestamp, { addSuffix: true })}
+                      {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
                     </div>
                   </div>
                 </div>
               ))}
-              {activities.length === 0 && (
-                <p className="text-center text-muted-foreground py-4">No recent activity</p>
+              {customRequests.length === 0 && (
+                <p className="text-center text-muted-foreground py-4">No custom requests</p>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </DialogContent>
+        </Dialog>
 
-        {/* Recent Bids Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Gavel className="h-5 w-5" />
-              Recent Bids
-            </CardTitle>
-            <CardDescription>Latest bids placed on auctions</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {(showAllBids ? recentBids : recentBids.slice(0, 5)).map((bid) => {
-                // Find the auction for this bid
+        {/* All Bids Modal */}
+        <Dialog open={showBidsModal} onOpenChange={setShowBidsModal}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>All Bids</DialogTitle>
+              <DialogDescription>
+                Complete list of all bids placed on auctions
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              {allBids.map((bid) => {
                 const auction = auctions.find(a => a.id === bid.auction_id);
                 return (
-                  <div key={bid.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="space-y-1">
-                      <p className="font-medium">${bid.amount}</p>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">
-                          Bid
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(bid.created_at), { addSuffix: true })}
-                        </span>
-                      </div>
+                  <div key={bid.id} className="p-4 border rounded-lg space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium text-lg">${bid.amount}</p>
+                      <Badge variant="secondary">Bid</Badge>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Bidder: {bid.bidder?.display_name || "Unknown"}</p>
                       {auction && (
-                        <p className="text-xs text-muted-foreground">
-                          On: {auction.title || `Auction ${auction.id.slice(0, 8)}`}
+                        <p className="text-sm text-muted-foreground">
+                          Auction: {auction.title || `Auction ${auction.id.slice(0, 8)}`}
                         </p>
                       )}
                     </div>
-                    <Badge variant="outline" className="text-xs">
-                      By: {bid.bidder?.display_name || "Unknown"}
-                    </Badge>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        {formatDistanceToNow(new Date(bid.created_at), { addSuffix: true })}
+                      </span>
+                      <Badge variant="outline">
+                        Status: {bid.status || "Active"}
+                      </Badge>
+                    </div>
                   </div>
                 )
               })}
-              {recentBids.length === 0 && (
-                <p className="text-center text-muted-foreground py-4">No recent bids</p>
+              {allBids.length === 0 && (
+                <p className="text-center text-muted-foreground py-4">No bids found</p>
               )}
-              <Button 
-                variant="outline" 
-                className="w-full bg-transparent"
-                onClick={() => setShowAllBids(!showAllBids)}
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                {showAllBids ? 'Show Less Bids' : 'View All Bids'}
-              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   )
