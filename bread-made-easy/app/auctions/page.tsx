@@ -94,27 +94,28 @@ export default function AuctionsPage() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {auctions.map((auction) => (
               <Card key={auction.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                <div className="aspect-video bg-muted">
-                  <img
-                    src={auction.funnel?.image_url || "/placeholder.svg"}
-                    alt={auction.title || "Auction image"}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <CardHeader>
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge variant="secondary">
-                      {auction.category?.name || "Uncategorized"}
-                    </Badge>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Clock className="h-4 w-4" />
-                      {auction.ends_at ? formatTimeRemaining(auction.ends_at) : "No end time"}
-                    </div>
+              <div className="aspect-video bg-muted">
+                <img
+                  src={auction.funnel?.image_url || "/placeholder.svg"}
+                  alt={auction.title || "Auction image"}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <CardHeader>
+                <div className="flex items-center justify-between mb-2">
+                  <Badge variant="secondary">
+                    {auction.funnel?.category?.name || auction.category?.name || "Uncategorized"}
+                  </Badge>
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <Clock className="h-4 w-4" />
+                    {auction.ends_at ? formatTimeRemaining(auction.ends_at) : "No end time"}
                   </div>
-                  <CardTitle className="text-lg">{auction.title || "Untitled Auction"}</CardTitle>
-                  <CardDescription className="line-clamp-2">
-                    {auction.description || "No description available"}
-                  </CardDescription>
+                </div>
+                <CardTitle className="text-lg">{auction.title || "Untitled Auction"}</CardTitle>
+                <CardDescription className="line-clamp-2">
+                  {auction.description || "No description available"}
+                </CardDescription>
+
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">

@@ -1,5 +1,6 @@
 import type { Auction, Bid } from "./types";
 import { databaseService } from "./database-service";
+import { supabase } from "./supabase-client";
 
 // Extended mock auction data with more details - kept for fallback
 const mockAuctions: Auction[] = [
@@ -109,44 +110,57 @@ export const auctionService = {
             return updatedAuction;
         }
     },
-
     async getAuctions(): Promise<Auction[]> {
-        try {
-            // Try to get auctions from database first
-            const dbAuctions = await databaseService.getAuctions(); // Remove extra argument
-            if (dbAuctions.length > 0) {
-                return dbAuctions;
-            }
+        const { data, error } = await supabase
+            .from("auctions")
+            .select(
+                `
+            *,
+            funnel:funnels(*, category:categories(*)),
+            winning_bid:bids!winning_bid_id(*)  
+          `
+            )
+            .order("ends_at", { ascending: true });
 
-            // Fallback to mock data if database is empty
-            console.log("No auctions found in database, using mock data");
-            return mockAuctions;
-        } catch (error) {
-            console.error(
-                "Error fetching auctions from database, using mock data:",
-                error
-            );
-            return mockAuctions;
+        console.log("Fetched auctions:", data);
+
+        if (error) {
+            console.error("Error fetching auctions:", error);
+            return [];
         }
+
+        return data || [];
     },
 
     async getAuctionById(id: string): Promise<Auction | null> {
-        try {
-            // Try to get auction from database first
-            const dbAuction = await databaseService.getAuctionById(id); // Remove extra argument
-            if (dbAuction) {
-                return dbAuction;
-            }
+        const { data, error } = await supabase
+            .from("auctions")
+            .select(
+                `
+            *,
+            funnel:funnels(*, category:categories(*)),
+            winning_bid:bids!winning_bid_id(*)
+          `
+            )
+            .eq("id", id)
+            .single();
 
-            // Fallback to mock data
-            return mockAuctions.find((auction) => auction.id === id) || null;
-        } catch (error) {
-            console.error(
-                "Error fetching auction from database, using mock data:",
-                error
-            );
-            return mockAuctions.find((auction) => auction.id === id) || null;
+        if (error) {
+            console.error("Error fetching auction:", error);
+            return null;
         }
+
+        // Get bids separately to avoid the relationship conflict
+        const { data: bidsData } = await supabase
+            .from("bids")
+            .select("*")
+            .eq("auction_id", id)
+            .order("amount", { ascending: false });
+
+        return {
+            ...data,
+            bids: bidsData || [],
+        };
     },
 
     async getBidsByAuction(auctionId: string): Promise<Bid[]> {
