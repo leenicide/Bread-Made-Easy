@@ -169,11 +169,17 @@ export const auctionService = {
     },
 
     // Add this method to the auctionService object in auction-service.ts
+    // In auction-service.ts, update the placeBid method
     async placeBid(
         auctionId: string,
         userId: string,
         amount: number
-    ): Promise<{ success: boolean; error?: string; auction?: Auction }> {
+    ): Promise<{
+        success: boolean;
+        error?: string;
+        auction?: Auction;
+        bidId?: string;
+    }> {
         try {
             // First create the bid
             const bid = await this.createBid({
@@ -196,7 +202,7 @@ export const auctionService = {
                 return { success: false, error: "Failed to update auction" };
             }
 
-            return { success: true, auction: updatedAuction };
+            return { success: true, auction: updatedAuction, bidId: bid.id };
         } catch (error) {
             console.error("Error placing bid:", error);
             return { success: false, error: "An unexpected error occurred" };
@@ -235,6 +241,35 @@ export const auctionService = {
             };
             mockBids.push(newBid);
             return newBid;
+        }
+    },
+
+    async updateBidOffer(
+        bidId: string,
+        offerAmount: number
+    ): Promise<Bid | null> {
+        try {
+            // Try to update bid in database first
+            const dbBid = await databaseService.updateBid(bidId, {
+                offer_amount: offerAmount,
+            });
+            if (dbBid) {
+                return dbBid;
+            }
+
+            // Fallback to mock update
+            const index = mockBids.findIndex((b) => b.id === bidId);
+            if (index === -1) return null;
+
+            const updatedBid: Bid = {
+                ...mockBids[index],
+                offer_amount: offerAmount,
+            };
+            mockBids[index] = updatedBid;
+            return updatedBid;
+        } catch (error) {
+            console.error("Error updating bid offer:", error);
+            return null;
         }
     },
 

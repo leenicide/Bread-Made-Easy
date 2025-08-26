@@ -38,45 +38,42 @@ export function BidForm({
         Number(auction.current_price) || Number(auction.starting_price);
     const minBid = Math.max(currentPrice + 25, Number(auction.starting_price));
 
-    const handlePlaceBid = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!user) return;
-
-        setError("");
-        setSuccess("");
-        setLoading(true);
-
-        try {
-            const amount = Number.parseFloat(bidAmount);
-            if (isNaN(amount) || amount < minBid) {
-                setError(`Bid must be at least $${minBid}`);
-                return;
-            }
-
-            const response = await auctionService.placeBid(
-                auction.id,
-                user.id,
-                amount
-            );
-
-            if (response.success && response.auction) {
-                setSuccess(`Bid placed successfully!`);
-                setBidAmount("");
-                onBidPlaced(response.auction);
-
-                // Remove this redirect
-                // setTimeout(() => {
-                //   router.push(`/post-bid/${auction.id}`)
-                // }, 1500)
-            } else {
-                setError(response.error || "Failed to place bid");
-            }
-        } catch (err) {
-            setError("An unexpected error occurred");
-        } finally {
-            setLoading(false);
-        }
-    };
+    // In bid-form.tsx, update the handlePlaceBid function
+const handlePlaceBid = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!user) return
+  
+    setError("")
+    setSuccess("")
+    setLoading(true)
+  
+    try {
+      const amount = Number.parseFloat(bidAmount)
+      if (isNaN(amount) || amount < minBid) {
+        setError(`Bid must be at least $${minBid}`)
+        return
+      }
+  
+      const response = await auctionService.placeBid(auction.id, user.id, amount)
+  
+      if (response.success && response.auction && response.bidId) {
+        setSuccess(`Bid placed successfully!`)
+        setBidAmount("")
+        onBidPlaced(response.auction)
+        
+        // Redirect to post-bid page with bid ID and current price
+        setTimeout(() => {
+          router.push(`/post-bid/${response.bidId}?current_price=${amount}`)
+        }, 1500)
+      } else {
+        setError(response.error || "Failed to place bid")
+      }
+    } catch (err) {
+      setError("An unexpected error occurred")
+    } finally {
+      setLoading(false)
+    }
+  }
 
     const handleBuyNow = async () => {
         if (!user || !auction.buy_now) return;

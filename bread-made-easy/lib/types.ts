@@ -79,6 +79,7 @@ export interface Bid {
   bidder_id: string
   amount: number
   created_at: Date
+  offer_amount?: number
   // Relations
   auction?: Auction
   bidder?: User
