@@ -214,6 +214,31 @@ export interface LegacyPurchase {
   createdAt: Date
   updatedAt: Date
 }
+export interface CustomRequest {
+  id: string
+  name: string
+  email: string
+  company?: string | undefined
+  phone?: string | undefined
+  projecttype: string
+  industry: string
+  targetaudience?: string | undefined
+  primarygoal: string
+  pages: string[]
+  features: string[]
+  timeline?: string | undefined
+  budget?: string | undefined
+
+  inspiration?: string | undefined
+  additionalnotes?: string | undefined
+  preferredcontact?: string | undefined
+  submitted_at: Date
+  status: string
+  assigned_team_member?: string | undefined
+  quarter?: string | undefined
+  created_at: Date
+  updated_at: Date
+}
 
 export interface LegacyCustomRequest {
   id: string

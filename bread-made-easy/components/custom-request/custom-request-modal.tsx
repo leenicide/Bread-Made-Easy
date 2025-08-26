@@ -45,6 +45,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { customRequestService } from "@/lib/custom-service"; // Import the service
 
 interface FormData {
     email: string;
@@ -153,6 +154,7 @@ export function CustomRequestModal({
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(false);
     const [submitted, setSubmitted] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
 
     // Prefill email if user is logged in
     if (user && user.email && !formData.email) {
@@ -220,12 +222,35 @@ export function CustomRequestModal({
         if (!validateStep(currentStep)) return;
 
         setLoading(true);
+        setSubmitError(null);
+        
         try {
-            // Simulate API call
-            await new Promise((resolve) => setTimeout(resolve, 2000));
+            // Prepare data for database
+            const requestData = {
+                name: formData.name || (user?.display_name || 'Anonymous'),
+                email: formData.email,
+                company: formData.company || null,
+                phone: formData.phone || null,
+                projecttype: formData.projectType,
+                industry: formData.industry,
+                targetaudience: formData.targetAudience || null,
+                primarygoal: formData.primaryGoal,
+                pages: formData.pages,
+                features: formData.features,
+                timeline: formData.timeline,
+                budget: formData.budget,
+                inspiration: formData.inspiration || null,
+                additionalnotes: formData.additionalNotes || null,
+                preferredcontact: formData.preferredContact
+            };
+
+            // Save to database
+            await customRequestService.createCustomRequest(requestData);
+            
             setSubmitted(true);
         } catch (error) {
             console.error("Failed to submit request:", error);
+            setSubmitError(error instanceof Error ? error.message : "Failed to submit request. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -238,6 +263,7 @@ export function CustomRequestModal({
             setCurrentStep(1);
             setFormData(initialFormData);
             setSubmitted(false);
+            setSubmitError(null);
         }, 300);
     };
 
@@ -689,6 +715,12 @@ export function CustomRequestModal({
                         Your Business. Your Oven. Built From Scratch.
                     </DialogDescription>
                 </DialogHeader>
+
+                {submitError && (
+                    <Alert variant="destructive" className="mb-4">
+                        <AlertDescription>{submitError}</AlertDescription>
+                    </Alert>
+                )}
 
                 {!submitted ? (
                     <>

@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
-import { adminService } from "@/lib/admin-service"
+import { customRequestService } from "@/lib/custom-service"
+import { useAuth } from "@/contexts/auth-context"
 import type { CustomRequest } from "@/lib/types"
 import { formatDistanceToNow } from "date-fns"
 import { Clock, MessageSquare, CheckCircle, AlertCircle, Calendar, DollarSign } from "lucide-react"
@@ -18,13 +19,19 @@ interface RequestTrackerProps {
 export function RequestTracker({ userId }: RequestTrackerProps) {
   const [requests, setRequests] = useState<CustomRequest[]>([])
   const [loading, setLoading] = useState(true)
+  const { user } = useAuth()
 
   useEffect(() => {
     const fetchRequests = async () => {
+      if (!user?.email) {
+        setLoading(false)
+        return
+      }
+      
       try {
-        // In a real app, this would filter by userId
-        const requestsData = await adminService.getCustomRequests()
-        setRequests(requestsData.filter((req) => req.buyerId === userId))
+        // Fetch requests by user email
+        const requestsData = await customRequestService.getCustomRequestsByEmail(user.email)
+        setRequests(requestsData)
       } catch (error) {
         console.error("Failed to fetch requests:", error)
       } finally {
@@ -33,11 +40,11 @@ export function RequestTracker({ userId }: RequestTrackerProps) {
     }
 
     fetchRequests()
-  }, [userId])
+  }, [userId, user])
 
-  const getStatusIcon = (status: CustomRequest["status"]) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
-      case "open":
+      case "pending":
         return <AlertCircle className="h-4 w-4 text-orange-500" />
       case "in_progress":
         return <Clock className="h-4 w-4 text-blue-500" />
@@ -50,9 +57,9 @@ export function RequestTracker({ userId }: RequestTrackerProps) {
     }
   }
 
-  const getStatusProgress = (status: CustomRequest["status"]) => {
+  const getStatusProgress = (status: string) => {
     switch (status) {
-      case "open":
+      case "pending":
         return 25
       case "in_progress":
         return 60
@@ -62,6 +69,18 @@ export function RequestTracker({ userId }: RequestTrackerProps) {
         return 0
       default:
         return 0
+    }
+  }
+
+  // Helper function to map database fields to component expectations
+  const mapRequestToComponent = (request: CustomRequest) => {
+    return {
+      ...request,
+      // Map database fields to what your component expects
+      title: request.projecttype || "Custom Request",
+      description: request.primarygoal || request.additionalnotes || "No description provided",
+      budget: request.budget ? parseFloat(request.budget) : 0,
+      // Add any other mappings needed
     }
   }
 
@@ -94,82 +113,86 @@ export function RequestTracker({ userId }: RequestTrackerProps) {
 
   return (
     <div className="space-y-6">
-      {requests.map((request) => (
-        <Card key={request.id}>
-          <CardHeader>
-            <div className="flex items-start justify-between">
+      {requests.map((request) => {
+        const mappedRequest = mapRequestToComponent(request)
+        
+        return (
+          <Card key={request.id}>
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <CardTitle className="text-lg">{mappedRequest.title}</CardTitle>
+                  <CardDescription className="line-clamp-2">{mappedRequest.description}</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  {getStatusIcon(request.status)}
+                  <Badge
+                    variant={
+                      request.status === "completed"
+                        ? "default"
+                        : request.status === "in_progress"
+                          ? "secondary"
+                          : request.status === "cancelled"
+                            ? "destructive"
+                            : "outline"
+                    }
+                  >
+                    {request.status.replace("_", " ")}
+                  </Badge>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
               <div className="space-y-2">
-                <CardTitle className="text-lg">{request.title}</CardTitle>
-                <CardDescription className="line-clamp-2">{request.description}</CardDescription>
+                <div className="flex items-center justify-between text-sm">
+                  <span>Progress</span>
+                  <span>{getStatusProgress(request.status)}%</span>
+                </div>
+                <Progress value={getStatusProgress(request.status)} className="h-2" />
               </div>
-              <div className="flex items-center gap-2">
-                {getStatusIcon(request.status)}
-                <Badge
-                  variant={
-                    request.status === "completed"
-                      ? "default"
-                      : request.status === "in_progress"
-                        ? "secondary"
-                        : request.status === "cancelled"
-                          ? "destructive"
-                          : "outline"
-                  }
-                >
-                  {request.status.replace("_", " ")}
-                </Badge>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span>Progress</span>
-                <span>{getStatusProgress(request.status)}%</span>
-              </div>
-              <Progress value={getStatusProgress(request.status)} className="h-2" />
-            </div>
 
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Budget</p>
-                  <p className="font-semibold">${request.budget}</p>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Budget</p>
+                    <p className="font-semibold">${mappedRequest.budget}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Timeline</p>
+                    <p className="font-semibold">
+                      {request.timeline || "Flexible"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Submitted</p>
+                    <p className="font-semibold">{formatDistanceToNow(request.submitted_at, { addSuffix: true })}</p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Deadline</p>
-                  <p className="font-semibold">
-                    {request.deadline ? request.deadline.toLocaleDateString() : "Flexible"}
-                  </p>
+
+              <Separator />
+
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">Request ID: {request.id}</div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="bg-transparent">
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Contact Team
+                  </Button>
+                  {request.status === "completed" && <Button size="sm">Download Files</Button>}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Submitted</p>
-                  <p className="font-semibold">{formatDistanceToNow(request.createdAt, { addSuffix: true })}</p>
-                </div>
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">Request ID: {request.id}</div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="bg-transparent">
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Contact Team
-                </Button>
-                {request.status === "completed" && <Button size="sm">Download Files</Button>}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+            </CardContent>
+          </Card>
+        )
+      })}
     </div>
   )
 }
