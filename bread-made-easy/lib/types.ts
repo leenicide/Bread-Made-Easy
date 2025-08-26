@@ -79,7 +79,6 @@ export interface Bid {
   bidder_id: string
   amount: number
   created_at: Date
-  offer_amount?: number
   // Relations
   auction?: Auction
   bidder?: User
@@ -97,6 +96,8 @@ export interface BuyNow {
 }
 
 export interface CustomRequest {
+  description: ReactNode
+  title: ReactNode
   id: string
   name: string
   email: string
@@ -149,6 +150,7 @@ export interface Lease {
 }
 
 export interface Purchase {
+  status: ReactNode
   id: string
   note: 'auction' | 'buy_now'
   funnel_id: string
