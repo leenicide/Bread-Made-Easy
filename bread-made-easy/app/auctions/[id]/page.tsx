@@ -209,8 +209,15 @@ export default function AuctionDetailPage() {
             ? Math.max(...bids.map((bid) => bid.amount), auction.starting_price)
             : auction.starting_price;
     const startingPrice = auction.starting_price;
-    const category = auction.category?.name || "Uncategorized";
     const imageUrl = auction.funnel?.image_url || "/placeholder.svg";
+    // In the auction detail page (auctions/[id]/page.tsx), update the category display
+    const category =
+        auction.funnel?.category?.name ||
+        auction.category?.name ||
+        "Uncategorized";
+
+    // Then in the JSX, use this category variable
+    <Badge variant="secondary">{category}</Badge>;
 
     return (
         <div className="min-h-screen">
