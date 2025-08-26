@@ -69,12 +69,12 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
       icon: DollarSign,
       permission: "canViewAllPurchases"
     },
-    {
-      name: "Analytics",
-      href: "/admin/analytics",
-      icon: LayoutDashboard,
-      permission: "canViewAnalytics"
-    },
+    // {
+    //   name: "Analytics",
+    //   href: "/admin/analytics",
+    //   icon: LayoutDashboard,
+    //   permission: "canViewAnalytics"
+    // },
     {
       name: "Settings",
       href: "/admin/settings",
