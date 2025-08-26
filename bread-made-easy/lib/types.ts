@@ -242,6 +242,33 @@ export interface CustomRequest {
   created_at: Date
   updated_at: Date
 }
+// In your types file (lib/types.ts)
+export interface LeadSource {
+  id: string;
+  email: string;
+  name?: string;
+  phone?: string;
+  company?: string;
+  source: 'custom_request' | 'bid_offer';
+  project_type?: string;
+  budget?: string;
+  offer_amount?: number;
+  status?: string;
+  created_at: Date;
+  // Additional fields from custom_requests
+  industry?: string;
+  targetaudience?: string;
+  primarygoal?: string;
+  pages?: string[];
+  features?: string[];
+  timeline?: string;
+  inspiration?: string;
+  additionalnotes?: string;
+  preferredcontact?: string;
+  // Additional fields from bids
+  auction_id?: string;
+  bidder_id?: string;
+}
 
 export interface LegacyCustomRequest {
   id: string

@@ -1,58 +1,126 @@
+// lib/lead-source-service.ts
 import { supabase } from "@/lib/supabase-client"
-import type { Lead } from "@/lib/types"
+import type { LeadSource } from "@/lib/types"
 
-export const leadService = {
-  // Fetch all leads
-  async getLeads(): Promise<Lead[]> {
-    const { data, error } = await supabase
-      .from("leads")
-      .select("*")
-      .order("created_at", { ascending: false })
+export const leadSourceService = {
+  // Fetch leads from both custom_requests and bids with offer_amount
+  async getLeads(): Promise<LeadSource[]> {
+    const leads: LeadSource[] = [];
+    
+    try {
+      // Get custom requests
+      const { data: customRequests, error: requestsError } = await supabase
+        .from("custom_requests")
+        .select("*")
+        .order("created_at", { ascending: false })
 
-    if (error) throw error
-    return (data || []).map((lead) => ({
-      ...lead,
-      created_at: new Date(lead.created_at),
-      updated_at: new Date(lead.updated_at),
-    }))
-  },
+      if (requestsError) throw requestsError
 
-  // Create a new lead
-  async createLead(email: string, phone_number?: string, username?: string): Promise<Lead> {
-    const { data, error } = await supabase
-      .from("leads")
-      .insert([{ email, phone_number, username }])
-      .select()
-      .single()
+      // Add custom requests to leads
+      if (customRequests) {
+        customRequests.forEach(request => {
+          leads.push({
+            id: request.id,
+            email: request.email,
+            name: request.name,
+            phone: request.phone,
+            company: request.company,
+            source: 'custom_request',
+            project_type: request.projecttype,
+            budget: request.budget,
+            status: request.status,
+            industry: request.industry,
+            targetaudience: request.targetaudience,
+            primarygoal: request.primarygoal,
+            pages: request.pages,
+            features: request.features,
+            timeline: request.timeline,
+            inspiration: request.inspiration,
+            additionalnotes: request.additionalnotes,
+            preferredcontact: request.preferredcontact,
+            created_at: new Date(request.created_at),
+          });
+        });
+      }
 
-    if (error) throw error
-    return {
-      ...data,
-      created_at: new Date(data.created_at),
-      updated_at: new Date(data.updated_at),
+      // Get bids with offer_amount (custom offers)
+      const { data: bids, error: bidsError } = await supabase
+        .from("bids")
+        .select("*")
+        .not('offer_amount', 'is', null)
+        .order("created_at", { ascending: false })
+
+      if (bidsError) throw bidsError
+
+      // Get user emails and profiles separately
+      if (bids && bids.length > 0) {
+        // Extract unique bidder IDs
+        const bidderIds = [...new Set(bids.map(bid => bid.bidder_id))];
+        
+        // Fetch user emails using the RPC function
+        const { data: users, error: usersError } = await supabase
+          .rpc('get_user_emails', { user_ids: bidderIds });
+
+        if (usersError) {
+          console.error("Error fetching users via RPC:", usersError);
+        }
+
+        // Fetch user profiles
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, display_name")
+          .in("id", bidderIds);
+
+        if (profilesError) {
+          console.error("Error fetching profiles:", profilesError);
+        }
+
+        // Create maps for easy lookup
+        const userMap = new Map();
+        users?.forEach(user => {
+          userMap.set(user.id, { 
+            email: user.email, 
+            phone: user.phone 
+          });
+        });
+
+        const profileMap = new Map();
+        profiles?.forEach(profile => {
+          profileMap.set(profile.id, { 
+            display_name: profile.display_name 
+          });
+        });
+
+        // Add bids with offer_amount to leads
+        bids.forEach(bid => {
+          const userData = userMap.get(bid.bidder_id);
+          const profileData = profileMap.get(bid.bidder_id);
+          
+          const email = userData?.email || 'Unknown';
+          const name = profileData?.display_name || 'Unknown';
+          const phone = userData?.phone || null;
+          
+          leads.push({
+            id: bid.id,
+            email: email,
+            name: name,
+            phone: phone,
+            source: 'bid_offer',
+            offer_amount: bid.offer_amount,
+            auction_id: bid.auction_id,
+            bidder_id: bid.bidder_id,
+            created_at: new Date(bid.created_at),
+          });
+        });
+      }
+
+      // Sort all leads by creation date
+      return leads.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+      throw error;
     }
-  },
-
-  // Update an existing lead (for future status/notes handling)
-  async updateLead(id: string, updates: Partial<Lead>): Promise<Lead> {
-    const { data, error } = await supabase
-      .from("leads")
-      .update(updates)
-      .eq("id", id)
-      .select()
-      .single()
-
-    if (error) throw error
-    return {
-      ...data,
-      created_at: new Date(data.created_at),
-      updated_at: new Date(data.updated_at),
-    }
-  },
-
-  // Delete a lead
-  async deleteLead(id: string): Promise<void> {
-    const { error } = await supabase.from("leads").delete().eq("id", id)
-    if (error) throw error
   },
 }

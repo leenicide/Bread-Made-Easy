@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { leadService } from "@/lib/lead-service";
+import { leadSourceService } from "@/lib/lead-service"; // Update import
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,9 +15,11 @@ import {
   Download,
   RefreshCw,
   Search,
-  Filter
+  Filter,
+  User,
+  FileText
 } from "lucide-react";
-import { Lead } from "@/lib/types";
+import { LeadSource } from "@/lib/types"; // Update import
 import { AdminLayout } from "@/components/admin/admin-layout";
 import {
   Select,
@@ -30,14 +32,14 @@ import { Badge } from "@/components/ui/badge";
 import { exportToCSV } from "@/lib/utils";
 
 interface SortConfig {
-  key: keyof Lead;
+  key: keyof LeadSource;
   direction: 'asc' | 'desc';
 }
 
 const ITEMS_PER_PAGE = 10;
 
 export default function LeadsPage() {
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const [leads, setLeads] = useState<LeadSource[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
@@ -46,7 +48,7 @@ export default function LeadsPage() {
     key: 'created_at',
     direction: 'desc'
   });
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sourceFilter, setSourceFilter] = useState<string>('all');
 
   useEffect(() => {
     fetchLeads();
@@ -54,7 +56,7 @@ export default function LeadsPage() {
 
   const fetchLeads = async () => {
     try {
-      const data = await leadService.getLeads();
+      const data = await leadSourceService.getLeads();
       setLeads(data);
     } catch (err) {
       console.error("Failed to fetch leads:", err);
@@ -69,7 +71,7 @@ export default function LeadsPage() {
     fetchLeads();
   };
 
-  const handleSort = (key: keyof Lead) => {
+  const handleSort = (key: keyof LeadSource) => {
     setSortConfig(current => ({
       key,
       direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
@@ -83,16 +85,16 @@ export default function LeadsPage() {
   const filteredLeads = leads.filter((lead) => {
     const term = search.toLowerCase();
     const matchesSearch = (
-      (lead.username?.toLowerCase() || "").includes(term) ||
+      (lead.name?.toLowerCase() || "").includes(term) ||
       lead.email.toLowerCase().includes(term) ||
-      (lead.phone_number?.includes(term) ?? false)
+      (lead.company?.toLowerCase() || "").includes(term) ||
+      (lead.phone?.includes(term) ?? false) ||
+      (lead.project_type?.toLowerCase() || "").includes(term)
     );
 
-    const matchesStatus = statusFilter === 'all' ||
-      (statusFilter === 'with_phone' && lead.phone_number) ||
-      (statusFilter === 'without_phone' && !lead.phone_number);
+    const matchesSource = sourceFilter === 'all' || lead.source === sourceFilter;
 
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesSource;
   });
 
   const sortedLeads = [...filteredLeads].sort((a, b) => {
@@ -112,11 +114,30 @@ export default function LeadsPage() {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedLeads = sortedLeads.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-  const SortIcon = ({ columnKey }: { columnKey: keyof Lead }) => {
+  const SortIcon = ({ columnKey }: { columnKey: keyof LeadSource }) => {
     if (sortConfig.key !== columnKey) return <ChevronUp className="w-4 h-4 opacity-50" />;
     return sortConfig.direction === 'asc' ?
       <ChevronUp className="w-4 h-4" /> :
       <ChevronDown className="w-4 h-4" />;
+  };
+
+  // Source badge with icon
+  const getSourceBadge = (source: 'custom_request' | 'bid_offer') => {
+    if (source === 'custom_request') {
+      return (
+        <Badge variant="outline" className="flex items-center gap-1">
+          <FileText className="w-3 h-3" />
+          Custom Request
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge variant="default" className="flex items-center gap-1">
+          <User className="w-3 h-3" />
+          Custom Offer
+        </Badge>
+      );
+    }
   };
 
   return (
@@ -128,6 +149,7 @@ export default function LeadsPage() {
             <p className="text-sm text-gray-500 mt-1">
               {filteredLeads.length} leads found
               {search && ` • ${filteredLeads.length} matching search`}
+              {sourceFilter !== 'all' && ` • Filtered by: ${sourceFilter === 'custom_request' ? 'Custom Requests' : 'Custom Offers'}`}
             </p>
           </div>
           <div className="flex gap-2">
@@ -148,22 +170,22 @@ export default function LeadsPage() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
                 <Input
-                  placeholder="Search by name, email, or phone..."
+                  placeholder="Search by name, email, company, phone, or project type..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-9 max-w-full"
                 />
               </div>
               <div className="flex gap-2">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <Select value={sourceFilter} onValueChange={setSourceFilter}>
                   <SelectTrigger className="w-[180px]">
                     <Filter className="w-4 h-4 mr-2" />
-                    <SelectValue placeholder="Filter status" />
+                    <SelectValue placeholder="Filter source" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Leads</SelectItem>
-                    <SelectItem value="with_phone">With Phone</SelectItem>
-                    <SelectItem value="without_phone">Without Phone</SelectItem>
+                    <SelectItem value="custom_request">Custom Requests</SelectItem>
+                    <SelectItem value="bid_offer">Custom Offers</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -180,7 +202,7 @@ export default function LeadsPage() {
             <CardContent className="p-8 text-center">
               <div className="text-gray-400 mb-4">No leads found</div>
               <p className="text-gray-500">
-                {search || statusFilter !== 'all'
+                {search || sourceFilter !== 'all'
                   ? "Try adjusting your search or filters"
                   : "No leads have been collected yet"
                 }
@@ -199,11 +221,11 @@ export default function LeadsPage() {
                       </TableHead>
                       <TableHead
                         className="cursor-pointer hover:bg-gray-50"
-                        onClick={() => handleSort('username')}
+                        onClick={() => handleSort('name')}
                       >
                         <div className="flex items-center">
                           Name
-                          <SortIcon columnKey="username" />
+                          <SortIcon columnKey="name" />
                         </div>
                       </TableHead>
                       <TableHead
@@ -217,11 +239,38 @@ export default function LeadsPage() {
                       </TableHead>
                       <TableHead
                         className="cursor-pointer hover:bg-gray-50"
-                        onClick={() => handleSort('phone_number')}
+                        onClick={() => handleSort('phone')}
                       >
                         <div className="flex items-center">
                           Phone
-                          <SortIcon columnKey="phone_number" />
+                          <SortIcon columnKey="phone" />
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-gray-50"
+                        onClick={() => handleSort('company')}
+                      >
+                        <div className="flex items-center">
+                          Company
+                          <SortIcon columnKey="company" />
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-gray-50"
+                        onClick={() => handleSort('source')}
+                      >
+                        <div className="flex items-center">
+                          Source
+                          <SortIcon columnKey="source" />
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:bg-gray-50"
+                        onClick={() => handleSort('project_type')}
+                      >
+                        <div className="flex items-center">
+                          Project/Offer
+                          <SortIcon columnKey="project_type" />
                         </div>
                       </TableHead>
                       <TableHead
@@ -229,7 +278,7 @@ export default function LeadsPage() {
                         onClick={() => handleSort('created_at')}
                       >
                         <div className="flex items-center">
-                          Created At
+                          Date
                           <SortIcon columnKey="created_at" />
                         </div>
                       </TableHead>
@@ -241,9 +290,9 @@ export default function LeadsPage() {
                         <TableCell>{startIndex + index + 1}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            {lead.username || "Anonymous"}
-                            {!lead.username && (
-                              <Badge variant="outline" className="text-xs">Anonymous</Badge>
+                            {lead.name || "Unknown"}
+                            {!lead.name && (
+                              <Badge variant="outline" className="text-xs">Unknown</Badge>
                             )}
                           </div>
                         </TableCell>
@@ -261,21 +310,44 @@ export default function LeadsPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {lead.phone_number ? (
+                          {lead.phone ? (
                             <a
-                              href={`tel:${lead.phone_number}`}
+                              href={`tel:${lead.phone}`}
                               className="font-mono text-blue-600 hover:text-blue-800 hover:underline"
                               title="Call lead"
                             >
-                              {lead.phone_number}
+                              {lead.phone}
                             </a>
                           ) : (
                             <span className="text-gray-400">-</span>
                           )}
                         </TableCell>
                         <TableCell>
+                          {lead.company || <span className="text-gray-400">-</span>}
+                        </TableCell>
+                        <TableCell>
+                          {getSourceBadge(lead.source)}
+                        </TableCell>
+                        <TableCell>
+                          {lead.source === 'custom_request' ? (
+                            <div>
+                              <div className="font-medium">{lead.project_type}</div>
+                              {lead.budget && (
+                                <div className="text-xs text-gray-500">Budget: {lead.budget}</div>
+                              )}
+                            </div>
+                          ) : (
+                            <div>
+                              <div className="font-medium">Custom Offer</div>
+                              {lead.offer_amount && (
+                                <div className="text-xs text-gray-500">Amount: ${lead.offer_amount}</div>
+                              )}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
                           {lead.created_at
-                            ? new Date(lead.created_at).toLocaleString()
+                            ? new Date(lead.created_at).toLocaleDateString()
                             : "-"}
                         </TableCell>
                       </TableRow>
