@@ -33,6 +33,8 @@ export default function AdminDashboard() {
   const [auctions, setAuctions] = useState<Auction[]>([])
   const [activities, setActivities] = useState<ActivityEvent[]>([])
   const [loading, setLoading] = useState(true)
+  const [showAllRequests, setShowAllRequests] = useState(false)
+  const [showAllBids, setShowAllBids] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -65,7 +67,7 @@ export default function AdminDashboard() {
         // Sort bids by date and get the most recent ones
         const sortedBids = allBids.sort((a, b) => 
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        ).slice(0, 10)
+        )
         
         setRecentBids(sortedBids)
 
@@ -259,7 +261,7 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {customRequests.map((request) => (
+                {(showAllRequests ? customRequests : customRequests.slice(0, 3)).map((request) => (
                   <div key={request.id} className="p-3 border rounded-lg space-y-2">
                     <div className="flex items-start justify-between">
                       <h4 className="font-medium text-sm line-clamp-1">{request.projecttype}</h4>
@@ -286,9 +288,13 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 ))}
-                <Button variant="outline" className="w-full bg-transparent">
+                <Button 
+                  variant="outline" 
+                  className="w-full bg-transparent"
+                  onClick={() => setShowAllRequests(!showAllRequests)}
+                >
                   <Eye className="h-4 w-4 mr-2" />
-                  View All Requests
+                  {showAllRequests ? 'Show Less Requests' : 'View All Requests'}
                 </Button>
               </div>
             </CardContent>
@@ -347,7 +353,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentBids.map((bid) => {
+              {(showAllBids ? recentBids : recentBids.slice(0, 5)).map((bid) => {
                 // Find the auction for this bid
                 const auction = auctions.find(a => a.id === bid.auction_id);
                 return (
@@ -377,9 +383,13 @@ export default function AdminDashboard() {
               {recentBids.length === 0 && (
                 <p className="text-center text-muted-foreground py-4">No recent bids</p>
               )}
-              <Button variant="outline" className="w-full bg-transparent">
+              <Button 
+                variant="outline" 
+                className="w-full bg-transparent"
+                onClick={() => setShowAllBids(!showAllBids)}
+              >
                 <Eye className="h-4 w-4 mr-2" />
-                View All Bids
+                {showAllBids ? 'Show Less Bids' : 'View All Bids'}
               </Button>
             </div>
           </CardContent>
