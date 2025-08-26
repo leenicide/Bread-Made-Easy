@@ -26,7 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     switch(userRole) {
       case 'admin':
         return '/admin'
-      case 'buyer':
+      case 'user':
       default:
         return '/dashboard'
     }

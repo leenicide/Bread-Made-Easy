@@ -6,17 +6,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, AlertCircle, CheckCircle } from "lucide-react"
 import { authService } from "@/lib/auth"
-import type { UserRole } from "@/lib/types"
 
 export function SignupForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [name, setName] = useState("")
-  const [role, setRole] = useState<UserRole>("user")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
@@ -28,8 +25,9 @@ export function SignupForm() {
     setError("")
 
     try {
-      const response = await authService.signup(email, password, name, role)
-      
+      // Always send role as "user"
+      const response = await authService.signup(email, password, name, "user")
+
       if (response.success) {
         setSuccess(true)
         setTimeout(() => {
@@ -114,35 +112,6 @@ export function SignupForm() {
               required
               minLength={6}
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="role">Account Type</Label>
-            <Select value={role} onValueChange={(value: UserRole) => setRole(value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select account type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="user">
-                  <div className="flex items-center space-x-2">
-                    <span>👤 User</span>
-                    <span className="text-sm text-gray-500">- Bid on auctions, make purchases</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="admin">
-                  <div className="flex items-center space-x-2">
-                    <span>🛡️ Admin</span>
-                    <span className="text-sm text-gray-500">- Full system access</span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-gray-500">
-              {role === 'admin' 
-                ? 'Admin accounts have full access to manage the system, users, and content.'
-                : 'User accounts can bid on auctions, make purchases, and submit custom requests.'
-              }
-            </p>
           </div>
 
           <Button 
