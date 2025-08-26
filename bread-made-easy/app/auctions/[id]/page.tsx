@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Header } from "@/components/header";
 import { Button } from "@/components/ui/button";
@@ -29,31 +29,32 @@ import {
     CheckCircle,
 } from "lucide-react";
 import Link from "next/link";
+import router from "next/router";
 
 export default function AuctionDetailPage() {
     const params = useParams();
     const auctionId = params.id as string;
-    const [auction, setAuction] = useState<Auction | null>(null);
-    const [bids, setBids] = useState<Bid[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
+    const [state, setState] = useState({
+        auction: null as Auction | null,
+        bids: [] as Bid[],
+        loading: true,
+        error: "",
+    });
+    const [redirectTo, setRedirectTo] = useState<string | null>(null);
 
     useEffect(() => {
+        let mounted = true;
+
         const fetchAuctionData = async () => {
             try {
-                setLoading(true);
-                const auctionData = await auctionService.getAuctionById(
-                    auctionId
-                );
+                const [auctionData, bidsData] = await Promise.all([
+                    auctionService.getAuctionById(auctionId),
+                    auctionService.getBidsByAuction(auctionId),
+                ]);
 
-                // After fetching the auction and bids, update the auction's current_price
+                if (!mounted) return;
+
                 if (auctionData) {
-                    const bidsData = await auctionService.getBidsByAuction(
-                        auctionId
-                    );
-                    setBids(bidsData);
-
-                    // Calculate the current price based on bids
                     const currentPrice =
                         bidsData.length > 0
                             ? Math.max(
@@ -62,37 +63,93 @@ export default function AuctionDetailPage() {
                               )
                             : auctionData.starting_price;
 
-                    // Update the auction with the correct current price
-                    setAuction({
-                        ...auctionData,
-                        current_price: currentPrice,
-                    });
+                    setState((prev) => ({
+                        ...prev,
+                        auction: {
+                            ...auctionData,
+                            current_price: currentPrice,
+                        },
+                        bids: bidsData,
+                        loading: false,
+                        error: "",
+                    }));
                 } else {
-                    setError("Auction not found");
+                    setState((prev) => ({
+                        ...prev,
+                        loading: false,
+                        error: "Auction not found",
+                    }));
                 }
             } catch (err) {
-                console.error("Error fetching auction:", err);
-                setError("Failed to load auction");
-            } finally {
-                setLoading(false);
+                if (mounted) {
+                    console.error("Error fetching auction:", err);
+                    setState((prev) => ({
+                        ...prev,
+                        loading: false,
+                        error: "Failed to load auction",
+                    }));
+                }
             }
         };
 
         if (auctionId) {
             fetchAuctionData();
         }
+
+        return () => {
+            mounted = false;
+        };
     }, [auctionId]);
 
-    const handleBidPlaced = async (updatedAuction: Auction) => {
-        setAuction(updatedAuction);
-        // Refresh bids after a new bid is placed
-        const bidsData = await auctionService.getBidsByAuction(auctionId);
-        setBids(bidsData);
-    };
+    useEffect(() => {
+        if (redirectTo) {
+            const timer = setTimeout(() => {
+                router.push(redirectTo);
+            }, 1500);
 
-    const handleBuyNow = (updatedAuction: Auction) => {
-        setAuction(updatedAuction);
-    };
+            return () => clearTimeout(timer);
+        }
+    }, [redirectTo, router]);
+
+    const handleBidPlaced = useCallback(
+        async (updatedAuction: Auction) => {
+            try {
+                const bidsData = await auctionService.getBidsByAuction(
+                    auctionId
+                );
+                setState((prev) => ({
+                    ...prev,
+                    bids: bidsData,
+                    auction: prev.auction
+                        ? {
+                              ...prev.auction,
+                              ...updatedAuction,
+                              current_price: Math.max(
+                                  ...bidsData.map((bid) => bid.amount),
+                                  prev.auction.starting_price
+                              ),
+                          }
+                        : null,
+                }));
+
+                // Set redirect after state update
+                setRedirectTo(`/post-bid/${auctionId}`);
+            } catch (error) {
+                console.error("Error refreshing bids:", error);
+            }
+        },
+        [auctionId]
+    );
+
+    const handleBuyNow = useCallback((updatedAuction: Auction) => {
+        setState((prev) => ({
+            ...prev,
+            auction: updatedAuction,
+        }));
+    }, []);
+
+    // Destructure state for easier access in JSX
+    const { auction, bids, loading, error } = state;
 
     if (loading) {
         return (
@@ -191,14 +248,15 @@ export default function AuctionDetailPage() {
                                             <CountdownTimer
                                                 endTime={endTime}
                                                 onExpire={() => {
-                                                    setAuction((prev) =>
-                                                        prev
+                                                    setState((prev) => ({
+                                                        ...prev,
+                                                        auction: prev.auction
                                                             ? {
-                                                                  ...prev,
+                                                                  ...prev.auction,
                                                                   status: "ended",
                                                               }
-                                                            : null
-                                                    );
+                                                            : null,
+                                                    }));
                                                 }}
                                             />
                                         </div>
@@ -293,6 +351,7 @@ export default function AuctionDetailPage() {
                             auction={auction}
                             onBidPlaced={handleBidPlaced}
                             onBuyNow={handleBuyNow}
+                            redirecting={!!redirectTo}
                         />
 
                         {/* Bid History */}
