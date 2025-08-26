@@ -103,7 +103,7 @@ export class DatabaseService {
       .select(`
         *,
         funnel:funnels(*),
-        winning_bid:bids!winning_bid_id(*)
+        winning_bid:bids!winning_bid_id(*)  
       `)
       .order('ends_at', { ascending: true })
 
@@ -115,6 +115,22 @@ export class DatabaseService {
     }
 
     return data || []
+  }
+
+  async updateBid(id: string, updates: Partial<Bid>): Promise<Bid | null> {
+    const { data, error } = await supabase
+      .from('bids')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single()
+  
+    if (error) {
+      console.error('Error updating bid:', error)
+      return null
+    }
+  
+    return data
   }
 
   async getAuctionById(id: string): Promise<Auction | null> {

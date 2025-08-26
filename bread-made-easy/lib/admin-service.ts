@@ -1,5 +1,27 @@
 import type { Lead, CustomRequest, Purchase, Auction, User } from "./types"
 import { databaseService } from "./database-service"
+import { format, subDays } from "date-fns"
+
+// Add these interfaces to your types
+interface DashboardStats {
+  totalLeads: number
+  totalRequests: number
+  pendingRequests: number
+  totalRevenue: number
+  activeAuctions: number
+  totalPurchases: number
+  recentActivities: ActivityEvent[]
+}
+
+interface ActivityEvent {
+  id: string
+  type: 'auction' | 'bid' | 'funnel' | 'user' | 'lead' | 'purchase' | 'custom_request'
+  action: string
+  title: string
+  description: string
+  timestamp: Date
+  metadata?: any
+}
 
 // Mock data for fallback - kept for development/testing
 const mockLeads: Lead[] = [
@@ -306,6 +328,166 @@ export const adminService = {
         totalPurchases: 0,
       }
     }
+  },
+
+  // New method for dashboard stats
+  async getDashboardStats(): Promise<DashboardStats> {
+    try {
+      const [leads, requests, purchases, auctions] = await Promise.all([
+        this.getLeads(),
+        this.getCustomRequests(),
+        this.getPurchases(),
+        this.getAuctions(),
+      ])
+
+      const totalRevenue = purchases
+        .filter(p => p.payment_status === 'completed')
+        .reduce((sum, p) => sum + p.amount, 0)
+
+      const pendingRequests = requests.filter(r => r.status === 'pending').length
+      const activeAuctions = auctions.filter(a => a.status === 'active').length
+      
+      // Get recent activities for the dashboard
+      const recentActivities = await this.getRecentActivities(10)
+
+      return {
+        totalLeads: leads.length,
+        totalRequests: requests.length,
+        pendingRequests,
+        totalRevenue,
+        activeAuctions,
+        totalPurchases: purchases.length,
+        recentActivities
+      }
+    } catch (error) {
+      console.error('Error getting dashboard stats:', error)
+      return {
+        totalLeads: 0,
+        totalRequests: 0,
+        pendingRequests: 0,
+        totalRevenue: 0,
+        activeAuctions: 0,
+        totalPurchases: 0,
+        recentActivities: []
+      }
+    }
+  },
+
+  // New method for recent purchases
+  async getRecentPurchases(limit = 5): Promise<Purchase[]> {
+    try {
+      const purchases = await this.getPurchases()
+      // Sort by date and limit results
+      return purchases
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, limit)
+    } catch (error) {
+      console.error('Error getting recent purchases:', error)
+      return mockPurchases.slice(0, limit)
+    }
+  },
+
+  // New method for recent activities
+  async getRecentActivities(limit = 10): Promise<ActivityEvent[]> {
+    try {
+      // In a real implementation, you would query your database for recent events
+      // This is a mock implementation that combines data from various sources
+      const [leads, requests, purchases, auctions] = await Promise.all([
+        this.getLeads(),
+        this.getCustomRequests(),
+        this.getPurchases(),
+        this.getAuctions(),
+      ])
+
+      const activities: ActivityEvent[] = []
+
+      // Add lead activities
+      leads.slice(0, 3).forEach(lead => {
+        activities.push({
+          id: `lead_${lead.id}`,
+          type: 'lead',
+          action: 'created',
+          title: 'New Lead Signup',
+          description: `${lead.username || 'Unknown user'} signed up with email ${lead.email}`,
+          timestamp: lead.created_at,
+          metadata: { lead }
+        })
+      })
+
+      // Add request activities
+      requests.slice(0, 3).forEach(request => {
+        activities.push({
+          id: `request_${request.id}`,
+          type: 'custom_request',
+          action: 'created',
+          title: 'New Custom Request',
+          description: `${request.name} submitted a request for ${request.projecttype}`,
+          timestamp: request.created_at,
+          metadata: { request }
+        })
+      })
+
+      // Add purchase activities
+      purchases.slice(0, 3).forEach(purchase => {
+        activities.push({
+          id: `purchase_${purchase.id}`,
+          type: 'purchase',
+          action: 'completed',
+          title: 'New Purchase',
+          description: `Purchase of $${purchase.amount} completed`,
+          timestamp: purchase.created_at,
+          metadata: { purchase }
+        })
+      })
+
+      // Add auction activities
+      auctions.slice(0, 3).forEach(auction => {
+        activities.push({
+          id: `auction_${auction.id}`,
+          type: 'auction',
+          action: 'created',
+          title: 'New Auction Created',
+          description: `Auction "${auction.title}" created with starting price $${auction.starting_price}`,
+          timestamp: auction.created_at,
+          metadata: { auction }
+        })
+      })
+
+      // Sort by timestamp and limit
+      return activities
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, limit)
+    } catch (error) {
+      console.error('Error getting recent activities:', error)
+      return []
+    }
+  },
+
+  // Real-time subscription methods (mock implementations)
+  subscribeToAuctions(callback: (event: any) => void): () => void {
+    // In a real implementation, this would set up a WebSocket or SSE connection
+    console.log('Subscribed to auction events')
+    return () => console.log('Unsubscribed from auction events')
+  },
+
+  subscribeToBids(callback: (event: any) => void): () => void {
+    console.log('Subscribed to bid events')
+    return () => console.log('Unsubscribed from bid events')
+  },
+
+  subscribeToFunnels(callback: (event: any) => void): () => void {
+    console.log('Subscribed to funnel events')
+    return () => console.log('Unsubscribed from funnel events')
+  },
+
+  subscribeToUsers(callback: (event: any) => void): () => void {
+    console.log('Subscribed to user events')
+    return () => console.log('Unsubscribed from user events')
+  },
+
+  subscribeToLeads(callback: (event: any) => void): () => void {
+    console.log('Subscribed to lead events')
+    return () => console.log('Unsubscribed from lead events')
   },
 
   // Legacy methods for backward compatibility

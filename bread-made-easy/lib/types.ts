@@ -96,6 +96,8 @@ export interface BuyNow {
 }
 
 export interface CustomRequest {
+  description: ReactNode
+  title: ReactNode
   id: string
   name: string
   email: string
@@ -148,6 +150,7 @@ export interface Lease {
 }
 
 export interface Purchase {
+  status: ReactNode
   id: string
   note: 'auction' | 'buy_now'
   funnel_id: string
