@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button"
 import { adminService } from "@/lib/admin-service"
 import { userService } from "@/lib/user-service"
 import { bidService } from "@/lib/bid-service"
-import type { Purchase, CustomRequest, User, Bid } from "@/lib/types"
+import { auctionService } from "@/lib/auction-service"
+import type { Purchase, CustomRequest, User, Bid, Auction } from "@/lib/types"
 import { formatDistanceToNow } from "date-fns"
 import { Eye, DollarSign, Clock, MessageSquare, Activity, Gavel, Users, Plus, Minus, User as UserIcon } from "lucide-react"
 
@@ -29,27 +30,44 @@ export default function AdminDashboard() {
   const [customRequests, setCustomRequests] = useState<CustomRequest[]>([])
   const [allUsers, setAllUsers] = useState<User[]>([])
   const [recentBids, setRecentBids] = useState<Bid[]>([])
+  const [auctions, setAuctions] = useState<Auction[]>([])
   const [activities, setActivities] = useState<ActivityEvent[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsData, purchasesData, requestsData, usersData, bidsData] = await Promise.all([
+        const [statsData, purchasesData, requestsData, usersData, auctionsData] = await Promise.all([
           adminService.getDashboardStats(),
           adminService.getRecentPurchases(),
           adminService.getCustomRequests(),
           userService.getAllUsers(),
-          bidService.getLegacyBids().then(bids => 
-            bids.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 10)
-          ),
+          auctionService.getAuctions(),
         ])
 
         setStats(statsData)
         setRecentPurchases(purchasesData)
         setCustomRequests(requestsData)
         setAllUsers(usersData)
-        setRecentBids(bidsData)
+        setAuctions(auctionsData)
+
+        // Fetch bids for all auctions
+        const allBids: Bid[] = []
+        for (const auction of auctionsData) {
+          try {
+            const auctionBids = await bidService.getBidsByAuction(auction.id)
+            allBids.push(...auctionBids)
+          } catch (error) {
+            console.error(`Failed to fetch bids for auction ${auction.id}:`, error)
+          }
+        }
+        
+        // Sort bids by date and get the most recent ones
+        const sortedBids = allBids.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        ).slice(0, 10)
+        
+        setRecentBids(sortedBids)
 
         // Generate activities from various sources
         const generatedActivities = await generateActivities(
@@ -57,7 +75,7 @@ export default function AdminDashboard() {
           purchasesData,
           requestsData,
           usersData,
-          bidsData
+          sortedBids
         )
         setActivities(generatedActivities)
       } catch (error) {
@@ -329,24 +347,33 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentBids.map((bid) => (
-                <div key={bid.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="space-y-1">
-                    <p className="font-medium">${bid.amount}</p>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs">
-                        Bid
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(bid.created_at), { addSuffix: true })}
-                      </span>
+              {recentBids.map((bid) => {
+                // Find the auction for this bid
+                const auction = auctions.find(a => a.id === bid.auction_id);
+                return (
+                  <div key={bid.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="space-y-1">
+                      <p className="font-medium">${bid.amount}</p>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">
+                          Bid
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDistanceToNow(new Date(bid.created_at), { addSuffix: true })}
+                        </span>
+                      </div>
+                      {auction && (
+                        <p className="text-xs text-muted-foreground">
+                          On: {auction.title || `Auction ${auction.id.slice(0, 8)}`}
+                        </p>
+                      )}
                     </div>
+                    <Badge variant="outline" className="text-xs">
+                      By: {bid.bidder?.display_name || "Unknown"}
+                    </Badge>
                   </div>
-                  <Badge variant="outline" className="text-xs">
-                    Auction: {bid.auction_id?.slice(0, 8)}...
-                  </Badge>
-                </div>
-              ))}
+                )
+              })}
               {recentBids.length === 0 && (
                 <p className="text-center text-muted-foreground py-4">No recent bids</p>
               )}
