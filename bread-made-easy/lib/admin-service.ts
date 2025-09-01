@@ -1,4 +1,4 @@
-import type { Lead, CustomRequest, Purchase, Auction, User } from "./types"
+import type { Lead, CustomRequest, Purchase, Auction, User, Bid } from "./types"
 import { databaseService } from "./database-service"
 import { format, subDays } from "date-fns"
 
@@ -271,6 +271,17 @@ export const adminService = {
     } catch (error) {
       console.error('Error fetching purchases from database, using mock data:', error)
       return mockPurchases
+    }
+  },
+
+
+    // Add this method to your adminService in admin-service.ts
+  async getAllBids(): Promise<Bid[]> {
+    try {
+      return await databaseService.getBids();
+    } catch (error) {
+      console.error('Error getting all bids:', error);
+      return [];
     }
   },
 

@@ -11,9 +11,10 @@ import { adminService } from "@/lib/admin-service"
 import { userService } from "@/lib/user-service"
 import { bidService } from "@/lib/bid-service"
 import { auctionService } from "@/lib/auction-service"
+import { supabase } from "@/lib/supabase-client"
 import type { Purchase, CustomRequest, User, Bid, Auction } from "@/lib/types"
 import { formatDistanceToNow } from "date-fns"
-import { Eye, DollarSign, Clock, MessageSquare, Activity, Gavel, Users, Plus, Minus, User as UserIcon, X } from "lucide-react"
+import { Eye, DollarSign, Clock, MessageSquare, Activity, Gavel, Users, Plus, Minus, User as UserIcon, X, RefreshCw } from "lucide-react"
 
 interface ActivityEvent {
   id: string
@@ -35,65 +36,244 @@ export default function AdminDashboard() {
   const [auctions, setAuctions] = useState<Auction[]>([])
   const [activities, setActivities] = useState<ActivityEvent[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [showRequestsModal, setShowRequestsModal] = useState(false)
   const [showBidsModal, setShowBidsModal] = useState(false)
 
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchData = async () => {
+    try {
+      const [statsData, purchasesData, requestsData, usersData, auctionsData] = await Promise.all([
+        adminService.getDashboardStats(),
+        adminService.getRecentPurchases(),
+        adminService.getCustomRequests(),
+        userService.getAllUsers(),
+        auctionService.getAuctions(),
+      ])
+
+      setStats(statsData)
+      setRecentPurchases(purchasesData)
+      setCustomRequests(requestsData)
+      setAllUsers(usersData)
+      setAuctions(auctionsData)
+
+      // Fetch all bids using the database service
       try {
-        const [statsData, purchasesData, requestsData, usersData, auctionsData] = await Promise.all([
-          adminService.getDashboardStats(),
-          adminService.getRecentPurchases(),
-          adminService.getCustomRequests(),
-          userService.getAllUsers(),
-          auctionService.getAuctions(),
-        ])
-
-        setStats(statsData)
-        setRecentPurchases(purchasesData)
-        setCustomRequests(requestsData)
-        setAllUsers(usersData)
-        setAuctions(auctionsData)
-
-        // Fetch bids for all auctions
-        const allBidsData: Bid[] = []
-        for (const auction of auctionsData) {
-          try {
-            const auctionBids = await bidService.getBidsByAuction(auction.id)
-            allBidsData.push(...auctionBids)
-          } catch (error) {
-            console.error(`Failed to fetch bids for auction ${auction.id}:`, error)
-          }
-        }
-        
-        // Store all bids
-        setAllBids(allBidsData)
+        const allBidsData = await adminService.getAllBids();
+        setAllBids(allBidsData);
         
         // Sort bids by date and get the most recent ones
         const sortedBids = allBidsData.sort((a, b) => 
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        ).slice(0, 5)
+        ).slice(0, 5);
         
-        setRecentBids(sortedBids)
-
-        // Generate activities from various sources
-        const generatedActivities = await generateActivities(
-          statsData,
-          purchasesData,
-          requestsData,
-          usersData,
-          sortedBids
-        )
-        setActivities(generatedActivities)
+        setRecentBids(sortedBids);
       } catch (error) {
-        console.error("Failed to fetch admin data:", error)
-      } finally {
-        setLoading(false)
+        console.error("Error fetching bids:", error);
       }
-    }
 
+      // Generate activities from various sources
+      const generatedActivities = await generateActivities(
+        statsData,
+        purchasesData,
+        requestsData,
+        usersData,
+        recentBids
+      )
+      setActivities(generatedActivities)
+    } catch (error) {
+      console.error("Failed to fetch admin data:", error)
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }
+
+  // Set up realtime subscriptions
+  useEffect(() => {
+    // Wait for initial data to load
+    if (!stats) return;
+    
+    // Channel for all realtime updates
+    const channel = supabase.channel('admin-dashboard-updates');
+    
+    // Subscribe to purchases table
+    channel.on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'purchases'
+      },
+      async (payload) => {
+        console.log('Purchase update received:', payload)
+        // Refresh purchases data
+        const purchasesData = await adminService.getRecentPurchases();
+        setRecentPurchases(purchasesData);
+        
+        // Refresh stats
+        const statsData = await adminService.getDashboardStats();
+        setStats(statsData);
+        
+        // Add to activity feed
+        if (payload.eventType === 'INSERT') {
+          const newActivity: ActivityEvent = {
+            id: `purchase_${payload.new.id}`,
+            type: 'purchase',
+            action: 'created',
+            title: 'New Purchase',
+            description: `Purchase of $${payload.new.amount} completed`,
+            timestamp: new Date(payload.new.created_at),
+            metadata: { purchase: payload.new }
+          };
+          setActivities(prev => [newActivity, ...prev.slice(0, 9)]);
+        }
+      }
+    ).subscribe();
+    
+    // Subscribe to custom_requests table
+    channel.on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'custom_requests'
+      },
+      async (payload) => {
+        console.log('Custom request update received:', payload)
+        // Refresh requests data
+        const requestsData = await adminService.getCustomRequests();
+        setCustomRequests(requestsData);
+        
+        // Add to activity feed
+        if (payload.eventType === 'INSERT') {
+          const newActivity: ActivityEvent = {
+            id: `request_${payload.new.id}`,
+            type: 'custom_request',
+            action: 'created',
+            title: 'New Custom Request',
+            description: `${payload.new.name} submitted a request for ${payload.new.projecttype}`,
+            timestamp: new Date(payload.new.created_at),
+            metadata: { request: payload.new }
+          };
+          setActivities(prev => [newActivity, ...prev.slice(0, 9)]);
+        }
+      }
+    ).subscribe();
+    
+    // Subscribe to bids table
+    channel.on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'bids'
+      },
+      async (payload) => {
+        console.log('Bid update received:', payload)
+        // Refresh all bids using the database service
+        try {
+          const allBidsData = await adminService.getAllBids();
+          setAllBids(allBidsData);
+          
+          // Sort bids by date and get the most recent ones
+          const sortedBids = allBidsData.sort((a, b) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          ).slice(0, 5);
+          
+          setRecentBids(sortedBids);
+          
+          // Refresh stats
+          const statsData = await adminService.getDashboardStats();
+          setStats(statsData);
+          
+          // Add to activity feed
+          if (payload.eventType === 'INSERT') {
+            const newActivity: ActivityEvent = {
+              id: `bid_${payload.new.id}`,
+              type: 'bid',
+              action: 'created',
+              title: 'New Bid Placed',
+              description: `Bid of $${payload.new.amount} placed on auction`,
+              timestamp: new Date(payload.new.created_at),
+              metadata: { bid: payload.new }
+            };
+            setActivities(prev => [newActivity, ...prev.slice(0, 9)]);
+          }
+        } catch (error) {
+          console.error("Error fetching bids:", error);
+        }
+      }
+    ).subscribe();
+    
+    // Subscribe to auctions table
+    channel.on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'auctions'
+      },
+      async (payload) => {
+        console.log('Auction update received:', payload)
+        // Refresh auctions data
+        const auctionsData = await auctionService.getAuctions();
+        setAuctions(auctionsData);
+        
+        // Refresh stats
+        const statsData = await adminService.getDashboardStats();
+        setStats(statsData);
+      }
+    ).subscribe();
+    
+    // Subscribe to profiles table (users)
+    channel.on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'profiles'
+      },
+      async (payload) => {
+        console.log('User update received:', payload)
+        // Refresh users data
+        const usersData = await userService.getAllUsers();
+        setAllUsers(usersData);
+        
+        // Refresh stats
+        const statsData = await adminService.getDashboardStats();
+        setStats({ ...statsData, totalUsers: usersData.length });
+        
+        // Add to activity feed
+        if (payload.eventType === 'INSERT') {
+          const newActivity: ActivityEvent = {
+            id: `user_${payload.new.id}`,
+            type: 'user',
+            action: 'created',
+            title: 'New User Signup',
+            description: `${payload.new.display_name || 'New user'} signed up`,
+            timestamp: new Date(payload.new.created_at),
+            metadata: { user: payload.new }
+          };
+          setActivities(prev => [newActivity, ...prev.slice(0, 9)]);
+        }
+      }
+    ).subscribe();
+
+    // Cleanup function
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [stats]); // Only re-run if stats change
+
+  // Fetch initial data
+  useEffect(() => {
     fetchData()
   }, [])
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchData();
+  };
 
   const generateActivities = async (
     statsData: any,
@@ -208,13 +388,20 @@ export default function AdminDashboard() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Overview of your marketplace performance</p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Dashboard</h1>
+            <p className="text-muted-foreground">Overview of your marketplace performance</p>
+          </div>
+          <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
 
         {stats && <StatsCards stats={{ ...stats, totalUsers: allUsers.length }} />}
 
+        {/* Rest of the component remains the same */}
         <div className="grid gap-6 lg:grid-cols-3">
           <Card className="lg:col-span-2">
             <CardHeader>

@@ -74,11 +74,12 @@ export interface Auction {
 }
 
 export interface Bid {
-  status: string
   id: string
   auction_id: string
   bidder_id: string
   amount: number
+  offer_amount?: number // Add this field
+  status: string
   created_at: Date
   // Relations
   auction?: Auction
