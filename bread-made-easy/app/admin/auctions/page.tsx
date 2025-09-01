@@ -10,7 +10,7 @@ import { auctionService } from "@/lib/auction-service"
 import { bidService } from "@/lib/bid-service"
 import { funnelService } from "@/lib/funnel-service"
 import type { Auction, Funnel, Bid } from "@/lib/types"
-import { Plus, Search, Edit, Eye, Pause, Play, X, Save, Trash, Users, Trophy } from "lucide-react"
+import { Plus, Search, Edit, Eye, Pause, Play, X, Save, Trash, Users, Trophy, Crown, Loader2, CheckCircle } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -43,6 +43,8 @@ export default function AdminAuctionsPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isBiddersDialogOpen, setIsBiddersDialogOpen] = useState(false)
   const [selectedAuction, setSelectedAuction] = useState<Auction | null>(null)
+  const [selectingWinner, setSelectingWinner] = useState(false)
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -56,7 +58,6 @@ export default function AdminAuctionsPage() {
     title: "",
     description: "",
     starting_price: 0,
-    current_price: 0,
     buy_now: 0,
     ends_at: "",
     status: "active" as "active" | "draft" | "ended",
@@ -131,7 +132,7 @@ export default function AdminAuctionsPage() {
     try {
       const createData = {
         ...createFormData,
-        current_price: createFormData.current_price || createFormData.starting_price, // default
+        current_price: createFormData.starting_price, // Set current price equal to starting price
         ends_at: createFormData.ends_at
           ? new Date(createFormData.ends_at)
           : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -145,7 +146,6 @@ export default function AdminAuctionsPage() {
           title: "",
           description: "",
           starting_price: 0,
-          current_price: 0,
           buy_now: 0,
           ends_at: "",
           status: "active",
@@ -154,6 +154,39 @@ export default function AdminAuctionsPage() {
       }
     } catch (error) {
       console.error("Failed to create auction:", error)
+    }
+  }
+
+
+  const handleSelectWinner = async (bidId: string) => {
+    if (!selectedAuction) return
+    
+    try {
+      setSelectingWinner(true)
+      
+      // Update the auction with the winning bid
+      const updatedAuction = await auctionService.updateAuction(selectedAuction.id, {
+        winning_bid_id: bidId,
+        status: "ended" // Optionally end the auction when selecting a winner
+      })
+      
+      if (updatedAuction) {
+        // Update the auctions list
+        setAuctions(auctions.map(a => 
+          a.id === selectedAuction.id ? updatedAuction : a
+        ))
+        
+        // Update the selected auction in state
+        setSelectedAuction(updatedAuction)
+        
+        // Show success message
+        // You could add a toast notification here
+        console.log("Winner selected successfully")
+      }
+    } catch (error) {
+      console.error("Failed to select winner:", error)
+    } finally {
+      setSelectingWinner(false)
     }
   }
 
@@ -420,18 +453,19 @@ export default function AdminAuctionsPage() {
 
         {/* Bidders Dialog */}
         <Dialog open={isBiddersDialogOpen} onOpenChange={setIsBiddersDialogOpen}>
-          <DialogContent className="sm:max-w-[700px]">
+          <DialogContent className="sm:max-w-[800px]">
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
                 {selectedAuction?.title || "Auction"} - Bidders
                 {selectedAuction?.winning_bid_id && (
                   <Badge variant="secondary" className="ml-2">
+                    <Crown className="h-3 w-3 mr-1" />
                     Winner Selected
                   </Badge>
                 )}
               </DialogTitle>
               <DialogDescription>
-                View all bidders for this auction
+                View all bidders for this auction. You can select a winner by clicking the "Select as Winner" button.
               </DialogDescription>
             </DialogHeader>
             <div className="max-h-[400px] overflow-y-auto">
@@ -442,17 +476,18 @@ export default function AdminAuctionsPage() {
                     <TableHead>Amount</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {selectedAuction && bids[selectedAuction.id]?.map((bid) => (
-                    <TableRow key={bid.id} className={
-                      selectedAuction.winning_bid_id === bid.id ? "bg-muted/50" : ""
-                    }>
+                    <TableRow 
+                      key={bid.id} 
+                      className={selectedAuction.winning_bid_id === bid.id ? "bg-muted/50" : ""}
+                    >
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Avatar className="h-8 w-8">
-                            {/* <AvatarImage src={bid.bidder?.avatar_url} /> */}
                             <AvatarFallback>
                               {bid.bidder?.display_name?.charAt(0) || "U"}
                             </AvatarFallback>
@@ -469,9 +504,33 @@ export default function AdminAuctionsPage() {
                       </TableCell>
                       <TableCell>
                         {selectedAuction.winning_bid_id === bid.id ? (
-                          <Badge className="bg-green-500">Winner</Badge>
+                          <Badge className="bg-green-500 flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            Winner
+                          </Badge>
                         ) : (
                           <Badge variant="outline">Bid</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {selectedAuction.winning_bid_id === bid.id ? (
+                          <Badge variant="outline" className="text-green-600 border-green-600">
+                            Selected
+                          </Badge>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleSelectWinner(bid.id)}
+                            disabled={selectingWinner}
+                          >
+                            {selectingWinner ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Crown className="h-4 w-4 mr-1" />
+                            )}
+                            Select as Winner
+                          </Button>
                         )}
                       </TableCell>
                     </TableRow>
@@ -479,7 +538,13 @@ export default function AdminAuctionsPage() {
                 </TableBody>
               </Table>
             </div>
-            <DialogFooter>
+            <DialogFooter className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                {selectedAuction?.winning_bid_id 
+                  ? "A winner has been selected for this auction."
+                  : "Select a winner for this auction."
+                }
+              </div>
               <Button onClick={() => setIsBiddersDialogOpen(false)}>Close</Button>
             </DialogFooter>
           </DialogContent>
@@ -567,10 +632,6 @@ export default function AdminAuctionsPage() {
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="create-starting_price" className="text-right">Starting Price</Label>
                 <Input id="create-starting_price" name="starting_price" type="number" value={createFormData.starting_price} onChange={handleCreateInputChange} className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="create-current_price" className="text-right">Current Price</Label>
-                <Input id="create-current_price" name="current_price" type="number" value={createFormData.current_price} onChange={handleCreateInputChange} className="col-span-3" />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="create-buy_now" className="text-right">Buy Now Price</Label>
