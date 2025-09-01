@@ -1,17 +1,25 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import {
+  useStripe,
+  useElements,
+  PaymentElement,
+  Elements,
+} from "@stripe/react-stripe-js"
+import { loadStripe } from "@stripe/stripe-js"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import { paymentService } from "@/lib/payment-service"
 import { useAuth } from "@/contexts/auth-context"
 import { CreditCard, Lock, Shield } from "lucide-react"
+
+// Make sure to call loadStripe outside of a component's render to avoid
+// recreating the Stripe object on every render.
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
 interface CheckoutFormProps {
   amount: number
@@ -22,51 +30,139 @@ interface CheckoutFormProps {
   onError?: (error: string) => void
 }
 
-export function CheckoutForm({ amount, title, description, metadata = {}, onSuccess, onError }: CheckoutFormProps) {
+function CheckoutFormInner({ amount, title, description, metadata = {}, onSuccess, onError }: CheckoutFormProps) {
+  const stripe = useStripe()
+  const elements = useElements()
   const { user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [cardDetails, setCardDetails] = useState({
-    number: "4242 4242 4242 4242",
-    expiry: "12/28",
-    cvc: "123",
-    name: user?.name || "",
-  })
+  const [clientSecret, setClientSecret] = useState("")
+  const [paymentIntentId, setPaymentIntentId] = useState("")
+  const [message, setMessage] = useState<string | null>(null)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  useEffect(() => {
     if (!user) return
 
-    setError("")
-    setLoading(true)
+    // Create PaymentIntent as soon as the page loads
+    paymentService.createPaymentIntent(amount, "usd", { ...metadata, buyerId: user.id })
+      .then((result) => {
+        if (result.success && result.paymentIntent) {
+          setClientSecret(result.paymentIntent.clientSecret)
+          setPaymentIntentId(result.paymentIntent.id)
+        } else {
+          setError(result.error || "Failed to initialize payment")
+        }
+      })
+      .catch((err) => {
+        setError(err.message || "Failed to initialize payment")
+      })
+  }, [user, amount, metadata])
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+  if (!stripe || !elements || !user) return
 
-    try {
-      // Create payment intent
-      const createResponse = await paymentService.createPaymentIntent(amount, "usd", { ...metadata, buyerId: user.id })
+  setError("")
+  setLoading(true)
 
-      if (!createResponse.success || !createResponse.paymentIntent) {
-        throw new Error(createResponse.error || "Failed to create payment intent")
-      }
+  try {
+    const { error: submitError, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: `${window.location.origin}/purchase-success?payment_intent=${paymentIntentId}&auctionId=${metadata.auctionId}&type=${metadata.type}&buyerId=${user.id}`,
+      },
+      redirect: 'if_required'
+    })
 
-      // Confirm payment
+    if (submitError) {
+      setError(submitError.message || "An error occurred during payment")
+      throw new Error(submitError.message)
+    }
+
+    // Check if payment was completed successfully
+    if (paymentIntent && paymentIntent.status === 'succeeded') {
+      // Payment completed successfully, confirm with our backend
       const confirmResponse = await paymentService.confirmPayment(
-        createResponse.paymentIntent.id,
-        "pm_card_visa", // Mock payment method
+        paymentIntent.id,
+        "",
+        { ...metadata, buyerId: user.id }
       )
 
       if (confirmResponse.success && confirmResponse.purchase) {
         onSuccess?.(confirmResponse.purchase.id)
       } else {
-        throw new Error(confirmResponse.error || "Payment failed")
+        throw new Error(confirmResponse.error || "Payment confirmation failed")
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred"
-      setError(errorMessage)
-      onError?.(errorMessage)
-    } finally {
-      setLoading(false)
+    } else if (paymentIntent && paymentIntent.status === 'processing') {
+      // Payment is processing, show message to user
+      setMessage("Your payment is processing. We'll notify you when it's complete.")
+      
+      // Poll for payment completion
+      const checkPaymentStatus = async () => {
+        try {
+          const statusResponse = await paymentService.verifyPaymentStatus(paymentIntent.id)
+          
+          if (statusResponse.success && statusResponse.paymentIntent?.status === 'succeeded') {
+            // Payment succeeded, confirm with backend
+            const confirmResponse = await paymentService.confirmPayment(
+              paymentIntent.id,
+              "",
+              { ...metadata, buyerId: user.id }
+            )
+            
+            if (confirmResponse.success && confirmResponse.purchase) {
+              onSuccess?.(confirmResponse.purchase.id)
+            } else {
+              setError(confirmResponse.error || "Payment confirmation failed after processing")
+            }
+          } else if (statusResponse.success && statusResponse.paymentIntent?.status === 'processing') {
+            // Still processing, check again in 2 seconds
+            setTimeout(checkPaymentStatus, 2000)
+          } else {
+            setError(statusResponse.error || "Payment failed after processing")
+          }
+        } catch (err) {
+          setError("Error checking payment status")
+        }
+      }
+      
+      // Start polling
+      setTimeout(checkPaymentStatus, 2000)
+    } else {
+      // If we get here, the payment might not have been completed yet
+      // This can happen with some payment methods that require additional steps
+      setMessage("Please complete the payment process. If you were redirected away, check your email for confirmation.")
     }
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred"
+    setError(errorMessage)
+    onError?.(errorMessage)
+  } finally {
+    setLoading(false)
   }
+}
+
+  useEffect(() => {
+    if (!stripe || !clientSecret) return
+
+    stripe.retrievePaymentIntent(clientSecret).then(({ paymentIntent }) => {
+      if (paymentIntent) {
+        switch (paymentIntent.status) {
+          case "succeeded":
+            setMessage("Payment succeeded!");
+            break;
+          case "processing":
+            setMessage("Your payment is processing.");
+            break;
+          case "requires_payment_method":
+            setMessage("Your payment was not successful, please try again.");
+            break;
+          default:
+            setMessage("Something went wrong.");
+            break;
+        }
+      }
+    });
+  }, [stripe, clientSecret]);
 
   if (!user) {
     return (
@@ -100,6 +196,12 @@ export function CheckoutForm({ amount, title, description, metadata = {}, onSucc
             </Alert>
           )}
 
+          {message && (
+            <Alert>
+              <AlertDescription>{message}</AlertDescription>
+            </Alert>
+          )}
+
           {/* Order Summary */}
           <div className="p-4 bg-muted/30 rounded-lg">
             <h3 className="font-semibold mb-2">Order Summary</h3>
@@ -117,69 +219,91 @@ export function CheckoutForm({ amount, title, description, metadata = {}, onSucc
             </div>
           </div>
 
-          {/* Payment Form */}
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="cardName">Cardholder Name</Label>
-              <Input
-                id="cardName"
-                value={cardDetails.name}
-                onChange={(e) => setCardDetails((prev) => ({ ...prev, name: e.target.value }))}
-                placeholder="John Doe"
-                required
+          {/* Payment Element */}
+          {clientSecret && (
+            <div className="space-y-4">
+              <PaymentElement 
+                options={{
+                  layout: "tabs",
+                  defaultValues: {
+                    billingDetails: {
+                      name: user.name || "",
+                      email: user.email || "",
+                    }
+                  }
+                }}
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="cardNumber">Card Number</Label>
-              <Input
-                id="cardNumber"
-                value={cardDetails.number}
-                onChange={(e) => setCardDetails((prev) => ({ ...prev, number: e.target.value }))}
-                placeholder="4242 4242 4242 4242"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="expiry">Expiry Date</Label>
-                <Input
-                  id="expiry"
-                  value={cardDetails.expiry}
-                  onChange={(e) => setCardDetails((prev) => ({ ...prev, expiry: e.target.value }))}
-                  placeholder="MM/YY"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cvc">CVC</Label>
-                <Input
-                  id="cvc"
-                  value={cardDetails.cvc}
-                  onChange={(e) => setCardDetails((prev) => ({ ...prev, cvc: e.target.value }))}
-                  placeholder="123"
-                  required
-                />
-              </div>
-            </div>
-          </div>
+          )}
 
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Shield className="h-4 w-4" />
             <span>Your payment information is secure and encrypted</span>
           </div>
 
-          <Button type="submit" className="w-full" size="lg" disabled={loading}>
+          <Button 
+            type="submit" 
+            className="w-full" 
+            size="lg" 
+            disabled={!stripe || !elements || loading || !clientSecret}
+          >
             <Lock className="h-4 w-4 mr-2" />
             {loading ? "Processing Payment..." : `Pay $${amount}`}
           </Button>
 
-          <div className="text-center">
-            <p className="text-xs text-muted-foreground">Demo Mode: Use card 4242 4242 4242 4242 for testing</p>
-          </div>
+          {/* Demo information */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">
+                Demo Mode: Use test card 4242 4242 4242 4242 with any future date and CVC
+              </p>
+            </div>
+          )}
         </form>
       </CardContent>
     </Card>
+  )
+}
+
+export function CheckoutForm(props: CheckoutFormProps) {
+  const [clientSecret, setClientSecret] = useState("")
+
+  useEffect(() => {
+    // Create PaymentIntent as soon as the page loads
+    paymentService.createPaymentIntent(props.amount, "usd", props.metadata || {})
+      .then((result) => {
+        if (result.success && result.paymentIntent) {
+          setClientSecret(result.paymentIntent.clientSecret)
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to create payment intent:", err)
+      })
+  }, [props.amount, props.metadata])
+
+  const options = {
+    clientSecret,
+    appearance: {
+      theme: 'stripe' as const,
+      variables: {
+        colorPrimary: '#6366f1',
+        colorBackground: '#ffffff',
+        colorText: '#30313d',
+        colorDanger: '#df1b41',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        spacingUnit: '4px',
+        borderRadius: '8px',
+      },
+    },
+  }
+
+  return (
+    <>
+      {clientSecret && (
+        <Elements stripe={stripePromise} options={options}>
+          <CheckoutFormInner {...props} />
+        </Elements>
+      )}
+    </>
   )
 }

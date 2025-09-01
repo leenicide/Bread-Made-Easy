@@ -21,7 +21,7 @@ export default function CheckoutPage() {
     const fetchAuction = async () => {
       if (auctionId) {
         try {
-          const auctionData = await auctionService.getAuction(auctionId)
+          const auctionData = await auctionService.getAuctionById(auctionId)
           setAuction(auctionData)
         } catch (error) {
           console.error("Failed to fetch auction:", error)

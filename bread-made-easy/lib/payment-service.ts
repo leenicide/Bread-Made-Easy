@@ -1,7 +1,12 @@
 import type { Purchase } from "./types"
 import { databaseService } from "./database-service"
+import { createClient } from '@supabase/supabase-js'
 
-// Mock Stripe integration for development
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
 export interface PaymentIntent {
   id: string
   amount: number
@@ -15,10 +20,8 @@ export interface PaymentResponse {
   success: boolean
   paymentIntent?: PaymentIntent
   error?: string
+  purchase?: Purchase
 }
-
-// Mock payment intents storage - kept for fallback
-const mockPaymentIntents: PaymentIntent[] = []
 
 export const paymentService = {
   async createPaymentIntent(
@@ -26,48 +29,83 @@ export const paymentService = {
     currency = "usd",
     metadata: Record<string, string> = {},
   ): Promise<PaymentResponse> {
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 800))
-
-    const paymentIntent: PaymentIntent = {
-      id: `pi_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      amount: amount * 100, // Convert to cents
-      currency,
-      status: "requires_payment_method",
-      clientSecret: `pi_${Date.now()}_secret_${Math.random().toString(36).substr(2, 9)}`,
-      metadata,
+    try {
+      const { data, error } = await supabase.functions.invoke('stripe-create-payment-intent', {
+        body: { 
+          amount, 
+          currency, 
+          metadata 
+        }
+      })
+      
+      if (error) throw error
+      
+      return {
+        success: true,
+        paymentIntent: {
+          id: data.paymentIntentId,
+          amount: data.amount || amount * 100,
+          currency: data.currency || currency,
+          status: "requires_payment_method",
+          clientSecret: data.clientSecret,
+          metadata: data.metadata || metadata
+        }
+      }
+    } catch (error) {
+      console.error('Error creating payment intent:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to create payment intent'
+      }
     }
-
-    mockPaymentIntents.push(paymentIntent)
-
-    return { success: true, paymentIntent }
   },
 
-  async confirmPayment(paymentIntentId: string, paymentMethodId = "pm_card_visa"): Promise<PaymentResponse> {
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    const paymentIntent = mockPaymentIntents.find((pi) => pi.id === paymentIntentId)
-    if (!paymentIntent) {
-      return { success: false, error: "Payment intent not found" }
+  async confirmPayment(
+    paymentIntentId: string, 
+    paymentMethodId: string,
+    metadata: Record<string, string> = {}
+  ): Promise<PaymentResponse> {
+    try {
+      const { data, error } = await supabase.functions.invoke('confirm-payment', {
+        body: { 
+          paymentIntentId, 
+          auctionId: metadata.auctionId,
+          type: metadata.type,
+          buyerId: metadata.buyerId
+        }
+      })
+      
+      if (error) throw error
+      
+      return {
+        success: true,
+        paymentIntent: {
+          id: paymentIntentId,
+          amount: data.amount || 0,
+          currency: 'usd',
+          status: "succeeded",
+          clientSecret: '',
+          metadata
+        },
+        purchase: data.purchase
+      }
+    } catch (error) {
+      console.error('Error confirming payment:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Payment confirmation failed'
+      }
     }
-
-    // Simulate successful payment
-    paymentIntent.status = "succeeded"
-
-    return { success: true, paymentIntent }
   },
 
   async createPurchase(purchase: Omit<Purchase, 'id' | 'created_at' | 'updated_at'>): Promise<Purchase | null> {
     try {
-      // Try to create purchase in database first
       const dbPurchase = await databaseService.createPurchase(purchase)
       if (dbPurchase) {
         return dbPurchase
       }
       
-      // Fallback to mock creation (this shouldn't happen in production)
-      console.warn('Failed to create purchase in database, using mock creation')
+      console.error('Failed to create purchase in database')
       return null
     } catch (error) {
       console.error('Error creating purchase in database:', error)
@@ -77,14 +115,12 @@ export const paymentService = {
 
   async updatePurchaseStatus(id: string, paymentStatus: string): Promise<Purchase | null> {
     try {
-      // Try to update purchase in database first
       const dbPurchase = await databaseService.updatePurchaseStatus(id, paymentStatus)
       if (dbPurchase) {
         return dbPurchase
       }
       
-      // Fallback to mock update (this shouldn't happen in production)
-      console.warn('Failed to update purchase in database')
+      console.error('Failed to update purchase in database')
       return null
     } catch (error) {
       console.error('Error updating purchase in database:', error)
@@ -94,16 +130,30 @@ export const paymentService = {
 
   async getPurchases(): Promise<Purchase[]> {
     try {
-      // Try to get purchases from database first
       const dbPurchases = await databaseService.getPurchases()
-      if (dbPurchases.length > 0) {
-        return dbPurchases
-      }
-      
-      // Return empty array if no purchases found
-      return []
+      return dbPurchases
     } catch (error) {
       console.error('Error fetching purchases from database:', error)
+      return []
+    }
+  },
+
+  async getPurchaseById(id: string): Promise<Purchase | null> {
+    try {
+      const purchase = await databaseService.getPurchaseById(id)
+      return purchase
+    } catch (error) {
+      console.error('Error fetching purchase:', error)
+      return null
+    }
+  },
+
+  async getPurchasesByUserId(userId: string): Promise<Purchase[]> {
+    try {
+      const purchases = await databaseService.getPurchasesByUserId(userId)
+      return purchases
+    } catch (error) {
+      console.error('Error fetching user purchases:', error)
       return []
     }
   },
@@ -114,35 +164,74 @@ export const paymentService = {
     buyerId: string,
     funnelId: string,
     type: 'auction' | 'buy_now' = 'buy_now',
-    paymentMethod = 'stripe'
+    paymentMethod = 'stripe',
+    metadata: Record<string, string> = {}
   ): Promise<PaymentResponse> {
     try {
       // Create payment intent
-      const paymentResponse = await this.createPaymentIntent(amount)
+      const paymentResponse = await this.createPaymentIntent(amount, 'usd', {
+        ...metadata,
+        buyerId,
+        funnelId,
+        type
+      })
+      
       if (!paymentResponse.success || !paymentResponse.paymentIntent) {
         return paymentResponse
-      }
-
-      // Create purchase record
-      const purchase = await this.createPurchase({
-        note: type,
-        funnel_id: funnelId,
-        buyer_id: buyerId,
-        amount,
-        payment_status: 'pending',
-        type: paymentMethod as any,
-        stripe_payment_intent_id: paymentResponse.paymentIntent.id,
-        provider_fee: 0,
-      })
-
-      if (!purchase) {
-        return { success: false, error: "Failed to create purchase record" }
       }
 
       return paymentResponse
     } catch (error) {
       console.error('Error processing payment:', error)
-      return { success: false, error: "Payment processing failed" }
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : "Payment processing failed" 
+      }
+    }
+  },
+
+  // Method to verify payment status with Stripe
+  async verifyPaymentStatus(paymentIntentId: string): Promise<PaymentResponse> {
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-payment', {
+        body: { paymentIntentId }
+      })
+      
+      if (error) throw error
+      
+      return {
+        success: data.status === 'succeeded',
+        paymentIntent: {
+          id: paymentIntentId,
+          amount: data.amount || 0,
+          currency: data.currency || 'usd',
+          status: data.status,
+          clientSecret: '',
+          metadata: data.metadata || {}
+        }
+      }
+    } catch (error) {
+      console.error('Error verifying payment status:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to verify payment status'
+      }
+    }
+  },
+
+  // Method to handle payment failures and refunds if needed
+  async handlePaymentFailure(paymentIntentId: string, reason: string): Promise<boolean> {
+    try {
+      const { error } = await supabase.functions.invoke('handle-payment-failure', {
+        body: { paymentIntentId, reason }
+      })
+      
+      if (error) throw error
+      
+      return true
+    } catch (error) {
+      console.error('Error handling payment failure:', error)
+      return false
     }
   }
 }
