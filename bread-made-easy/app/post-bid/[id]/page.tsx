@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useParams } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useParams, useSearchParams } from "next/navigation"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,23 +9,42 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { CheckCircle, Shield, Zap, Clock, Lock, Mail } from "lucide-react"
 import Link from "next/link"
+import { auctionService } from "@/lib/auction-service"
 
 export default function BidConfirmationPage() {
   const params = useParams()
-  const auctionId = params.id as string
+  const searchParams = useSearchParams()
+  const bidId = params.id as string
+  const currentPrice = Number(searchParams.get('current_price')) || 0
   const [offerAmount, setOfferAmount] = useState("")
   const [email, setEmail] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submissionResult, setSubmissionResult] = useState<{success: boolean; message: string} | null>(null)
+  const [minOffer, setMinOffer] = useState(currentPrice + 1000) // Minimum offer is current price + $1000
+
+  useEffect(() => {
+    setMinOffer(currentPrice + 1000)
+  }, [currentPrice])
 
   const handleSubmitOffer = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
       const amount = Number(offerAmount)
-      if (amount >= 10000) {
+      if (amount < minOffer) {
+        setSubmissionResult({
+          success: false,
+          message: `Your offer of $${offerAmount} is below our minimum threshold. Please consider increasing your offer to at least $${minOffer}.`
+        })
+        setIsSubmitting(false)
+        return
+      }
+
+      // Update the bid with the offer amount
+      const updatedBid = await auctionService.updateBidOffer(bidId, amount)
+      
+      if (updatedBid) {
         setSubmissionResult({
           success: true,
           message: "Offer submitted! Our team will review it within 24 hours and contact you at the email provided."
@@ -33,11 +52,17 @@ export default function BidConfirmationPage() {
       } else {
         setSubmissionResult({
           success: false,
-          message: `Your offer of $${offerAmount} is below our minimum threshold. Please consider increasing your offer to at least $10,000.`
+          message: "Failed to submit offer. Please try again."
         })
       }
+    } catch (err) {
+      setSubmissionResult({
+        success: false,
+        message: "An unexpected error occurred. Please try again."
+      })
+    } finally {
       setIsSubmitting(false)
-    }, 1500)
+    }
   }
 
   return (
@@ -170,8 +195,6 @@ export default function BidConfirmationPage() {
                       value={offerAmount}
                       onChange={(e) => setOfferAmount(e.target.value)}
                       placeholder="Enter your offer amount"
-                      min="1000"
-                      step="1000"
                       required
                     />
                   </div>
