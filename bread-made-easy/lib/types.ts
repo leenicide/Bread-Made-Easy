@@ -151,24 +151,38 @@ export interface Lease {
   renter?: User
 }
 
+// lib/types.ts
+
 export interface Purchase {
-  status: ReactNode
   id: string
   note: 'auction' | 'buy_now'
   funnel_id: string
   buyer_id: string
   amount: number
-  payment_status: PaymentStatus
-  type: PurchaseType
+  payment_status: string // Should match your payment_status enum
+  type: string // Should match your purchase_type enum
   stripe_payment_intent_id?: string
   paypal_order_id?: string
   paypal_transaction_id?: string
   provider_fee: number
-  created_at: Date
-  updated_at: Date
-  // Relations
-  funnel?: Funnel
-  buyer?: User
+  created_at: string
+  updated_at: string
+}
+
+export interface PurchaseWithDetails extends Purchase {
+  funnel_title?: string
+  buyer_name?: string
+  buyer_email?: string
+}
+
+export interface PurchaseFilters {
+  status?: string
+  type?: string
+  note?: string
+  startDate?: string
+  endDate?: string
+  minAmount?: number
+  maxAmount?: number
 }
 
 export interface AuctionTag {
