@@ -269,7 +269,10 @@ export class DatabaseService {
   async createBid(bid: Omit<Bid, 'id' | 'created_at'>): Promise<Bid | null> {
     const { data, error } = await supabase
       .from('bids')
-      .insert([bid])
+      .insert([{
+        ...bid,
+        payment_intent_id: bid.payment_intent_id || null // Add payment intent ID
+      }])
       .select()
       .single()
 
@@ -279,7 +282,7 @@ export class DatabaseService {
     }
 
     return data
-  }
+}
 
   // Buy Now operations
   async getBuyNowOffers(): Promise<BuyNow[]> {

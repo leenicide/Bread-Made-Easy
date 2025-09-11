@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,19 +9,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/contexts/auth-context";
 import { auctionService } from "@/lib/auction-service";
 import type { Auction } from "@/lib/types";
-import { Gavel, Zap, TrendingUp, Loader2, Shield, Lock, CreditCard } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Gavel, Zap, Loader2 } from "lucide-react";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { PaymentModal } from "@/components/payment/payment-modal";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Card, CardContent } from "@/components/ui/card";
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -41,54 +31,35 @@ export function BidForm({
   redirecting,
 }: BidFormProps) {
   const { user } = useAuth();
-  const router = useRouter();
   const [bidAmount, setBidAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [lastBid, setLastBid] = useState<{
-    bidId: string;
-    amount: number;
-  } | null>(null);
+  const [pendingBidAmount, setPendingBidAmount] = useState<number>(0);
 
   // Calculate minimum bid with proper type handling
   const currentPrice =
     Number(auction.current_price) || Number(auction.starting_price);
   const minBid = Math.max(currentPrice + 25, Number(auction.starting_price));
 
-  const handlePlaceBid = async (e: React.FormEvent) => {
+  const handleOpenPaymentModal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
 
     setError("");
-    setSuccess("");
     setLoading(true);
 
     try {
       const amount = Number.parseFloat(bidAmount);
       if (isNaN(amount) || amount < minBid) {
         setError(`Bid must be at least $${minBid}`);
+        setLoading(false);
         return;
       }
 
-      const response = await auctionService.placeBid(
-        auction.id,
-        user.id,
-        amount
-      );
-
-      if (response.success && response.auction && response.bidId) {
-        setSuccess(`Bid placed successfully!`);
-        setBidAmount("");
-        onBidPlaced(response.auction);
-
-        // Store the bid info and show payment modal
-        setLastBid({ bidId: response.bidId, amount });
-        setShowPaymentModal(true);
-      } else {
-        setError(response.error || "Failed to place bid");
-      }
+      // Store the bid amount and show payment modal
+      setPendingBidAmount(amount);
+      setShowPaymentModal(true);
     } catch (err) {
       setError("An unexpected error occurred");
     } finally {
@@ -98,21 +69,35 @@ export function BidForm({
 
   const handleBuyNow = async () => {
     if (!user || !auction.buy_now) return;
-    router.push(
-      `/checkout?auctionId=${auction.id}&type=buy_now&amount=${auction.buy_now}`
-    );
+    // Use window.location for navigation to avoid router issues
+    window.location.href = `/checkout?auctionId=${auction.id}&type=buy_now&amount=${auction.buy_now}`;
   };
 
-  const handlePaymentSuccess = () => {
-    if (lastBid) {
-      // Redirect to post-bid page after successful payment
-      setTimeout(() => {
-        router.push(
-          `/post-bid/${lastBid.bidId}?current_price=${lastBid.amount}`
+  // In bid-form.tsx, update the handlePaymentSuccess function
+const handlePaymentSuccess = async (paymentIntentId: string) => {
+    try {
+        setLoading(true);
+        // Only place the bid after successful payment authorization
+        const response = await auctionService.placeBid(
+            auction.id,
+            user!.id,
+            pendingBidAmount,
+            paymentIntentId // Pass the payment intent ID
         );
-      }, 1000);
+
+        if (response.success && response.auction && response.bidId) {
+            onBidPlaced(response.auction);
+            // Redirect to post-bid page after successful payment and bid placement
+            window.location.href = `/post-bid/${response.bidId}?current_price=${pendingBidAmount}`;
+        } else {
+            setError(response.error || "Failed to place bid after payment");
+        }
+    } catch (err) {
+        setError("An unexpected error occurred after payment");
+    } finally {
+        setLoading(false);
     }
-  };
+};
 
   if (!user) {
     return (
@@ -143,63 +128,16 @@ export function BidForm({
         <PaymentModal
           open={showPaymentModal}
           onOpenChange={setShowPaymentModal}
-          bidId={lastBid?.bidId || ""}
-          amount={lastBid?.amount || 0}
+          amount={pendingBidAmount}
+          auctionId={auction.id}
           onSuccess={handlePaymentSuccess}
+          onError={setError}
         />
       </Elements>
-      
-      {/* Payment Security Disclaimer Modal */}
-      <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-primary" />
-              Secure Payment Authorization
-            </DialogTitle>
-            <DialogDescription>
-              We need to securely store your payment method for this bid
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Lock className="h-4 w-4" />
-                    <span>Your card will only be charged if you win the auction</span>
-                  </div>
-                  
-                  <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
-                    <h4 className="font-medium text-amber-800 mb-2">Demo Credentials</h4>
-                    <p className="text-xs text-amber-700">
-                      Use card: <strong>4242 4242 4242 4242</strong><br />
-                      Any future expiry date, any CVC<br />
-                      Any ZIP code
-                    </p>
-                  </div>
-                  
-                  <Elements stripe={stripePromise}>
-                    <PaymentModal
-                      open={showPaymentModal}
-                      onOpenChange={setShowPaymentModal}
-                      bidId={lastBid?.bidId || ""}
-                      amount={lastBid?.amount || 0}
-                      onSuccess={handlePaymentSuccess}
-                      compact={true}
-                    />
-                  </Elements>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </DialogContent>
-      </Dialog>
 
-      {(error || success) && (
-        <Alert variant={error ? "destructive" : "default"}>
-          <AlertDescription>{error || success}</AlertDescription>
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
@@ -213,7 +151,7 @@ export function BidForm({
           </p>
         </div>
 
-        <form onSubmit={handlePlaceBid} className="space-y-4">
+        <form onSubmit={handleOpenPaymentModal} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="bidAmount">Your Bid Amount</Label>
             <Input

@@ -81,6 +81,7 @@ export interface Bid {
   offer_amount?: number // Add this field
   status: string
   created_at: Date
+  payment_intent_id?: string; // Add this field
   // Relations
   auction?: Auction
   bidder?: User

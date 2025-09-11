@@ -182,81 +182,82 @@ export const auctionService = {
         }
     },
 
-    // Add this method to the auctionService object in auction-service.ts
-    // In auction-service.ts, update the placeBid method
-    async placeBid(
-        auctionId: string,
-        userId: string,
-        amount: number
-    ): Promise<{
-        success: boolean;
-        error?: string;
-        auction?: Auction;
-        bidId?: string;
-    }> {
-        try {
-            // First create the bid
-            const bid = await this.createBid({
-                auction_id: auctionId,
-                bidder_id: userId,
-                amount,
-            });
+   // In auction-service.ts, update the placeBid method
+async placeBid(
+    auctionId: string,
+    userId: string,
+    amount: number,
+    paymentIntentId: string // Add paymentIntentId parameter
+): Promise<{
+    success: boolean;
+    error?: string;
+    auction?: Auction;
+    bidId?: string;
+}> {
+    try {
+        // First create the bid with payment intent ID
+        const bid = await this.createBid({
+            auction_id: auctionId,
+            bidder_id: userId,
+            amount,
+            payment_intent_id: paymentIntentId // Add payment intent ID
+        });
 
-            if (!bid) {
-                return { success: false, error: "Failed to create bid" };
-            }
-
-            // Then update the auction with the new current price
-            const updatedAuction = await this.updateAuction(auctionId, {
-                current_price: amount,
-                winning_bid_id: bid.id,
-            });
-
-            if (!updatedAuction) {
-                return { success: false, error: "Failed to update auction" };
-            }
-
-            return { success: true, auction: updatedAuction, bidId: bid.id };
-        } catch (error) {
-            console.error("Error placing bid:", error);
-            return { success: false, error: "An unexpected error occurred" };
+        if (!bid) {
+            return { success: false, error: "Failed to create bid" };
         }
-    },
 
-    async createBid(bid: Omit<Bid, "id" | "created_at">): Promise<Bid | null> {
-        try {
-            // Try to create bid in database first
-            const dbBid = await databaseService.createBid(bid);
-            if (dbBid) {
-                return dbBid;
-            }
+        // Then update the auction with the new current price
+        const updatedAuction = await this.updateAuction(auctionId, {
+            current_price: amount,
+            winning_bid_id: bid.id,
+        });
 
-            // Fallback to mock creation
-            const newBid: Bid = {
-                ...bid,
-                id: `bid_${Date.now()}_${Math.random()
-                    .toString(36)
-                    .substr(2, 9)}`,
-                created_at: new Date(),
-            };
-            mockBids.push(newBid);
-            return newBid;
-        } catch (error) {
-            console.error(
-                "Error creating bid in database, using mock creation:",
-                error
-            );
-            const newBid: Bid = {
-                ...bid,
-                id: `bid_${Date.now()}_${Math.random()
-                    .toString(36)
-                    .substr(2, 9)}`,
-                created_at: new Date(),
-            };
-            mockBids.push(newBid);
-            return newBid;
+        if (!updatedAuction) {
+            return { success: false, error: "Failed to update auction" };
         }
-    },
+
+        return { success: true, auction: updatedAuction, bidId: bid.id };
+    } catch (error) {
+        console.error("Error placing bid:", error);
+        return { success: false, error: "An unexpected error occurred" };
+    }
+},
+
+async createBid(bid: Omit<Bid, "id" | "created_at">): Promise<Bid | null> {
+    try {
+        // Try to create bid in database first
+        const dbBid = await databaseService.createBid(bid);
+        if (dbBid) {
+            return dbBid;
+        }
+
+        // Fallback to mock creation
+        const newBid: Bid = {
+            ...bid,
+            id: `bid_${Date.now()}_${Math.random()
+                .toString(36)
+                .substr(2, 9)}`,
+            created_at: new Date(),
+        };
+        mockBids.push(newBid);
+        return newBid;
+    } catch (error) {
+        console.error(
+            "Error creating bid in database, using mock creation:",
+            error
+        );
+        const newBid: Bid = {
+            ...bid,
+            id: `bid_${Date.now()}_${Math.random()
+                .toString(36)
+                .substr(2, 9)}`,
+            created_at: new Date(),
+        };
+        mockBids.push(newBid);
+        return newBid;
+    }
+},
 
     async updateBidOffer(
         bidId: string,

@@ -5,6 +5,7 @@ import {
   useStripe,
   useElements,
   PaymentElement,
+  Elements,
 } from "@stripe/react-stripe-js";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +20,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { paymentService } from "@/lib/payment-service";
 import { useAuth } from "@/contexts/auth-context";
-import { CreditCard, Lock, Shield, CheckCircle, Info } from "lucide-react";
+import { CreditCard, Lock, Shield, CheckCircle, Info, Loader2 } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -27,94 +28,63 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 interface PaymentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  bidId: string;
+  auctionId: string;
   amount: number;
-  onSuccess: () => void;
+  onSuccess: (paymentIntentId: string) => void;
+  onError: (error: string) => void;
   compact?: boolean;
 }
 
-export function PaymentModal({
-  open,
-  onOpenChange,
-  bidId,
+// Inner component that uses Stripe hooks
+function PaymentFormInner({
+  clientSecret,
+  auctionId,
   amount,
   onSuccess,
-  compact = false,
-}: PaymentModalProps) {
+  onOpenChange,
+  onError,
+}: {
+  clientSecret: string;
+  auctionId: string;
+  amount: number;
+  onSuccess: (paymentIntentId: string) => void;
+  onOpenChange: (open: boolean) => void;
+  onError: (error: string) => void;
+}) {
   const stripe = useStripe();
   const elements = useElements();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [clientSecret, setClientSecret] = useState("");
-  const [paymentIntentId, setPaymentIntentId] = useState("");
   const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    if (!user || !open) return;
-
-    // Create PaymentIntent when modal opens
-    paymentService
-      .createPaymentIntent(amount, "usd", {
-        bidId,
-        type: "bid_security",
-        buyerId: user.id,
-      })
-      .then((result) => {
-        if (result.success && result.paymentIntent) {
-          setClientSecret(result.paymentIntent.clientSecret);
-          setPaymentIntentId(result.paymentIntent.id);
-        } else {
-          setError(result.error || "Failed to initialize payment");
-        }
-      })
-      .catch((err) => {
-        setError(err.message || "Failed to initialize payment");
-      });
-  }, [user, amount, bidId, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!stripe || !elements || !user) return;
 
-    setError("");
+    setMessage("");
     setLoading(true);
 
     try {
       const { error: submitError, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: `${window.location.origin}/post-bid/${bidId}?payment_intent=${paymentIntentId}&bidId=${bidId}&buyerId=${user.id}`,
+          return_url: `${window.location.origin}/post-bid?auctionId=${auctionId}`,
         },
         redirect: "if_required",
       });
 
       if (submitError) {
-        setError(submitError.message || "An error occurred during payment");
+        onError(submitError.message || "An error occurred during payment");
         throw new Error(submitError.message);
       }
 
       if (paymentIntent && paymentIntent.status === "succeeded") {
-        // Payment completed successfully, confirm with our backend
-        const confirmResponse = await paymentService.confirmPayment(
-          paymentIntent.id,
-          "",
-          {
-            bidId,
-            type: "bid_security",
-            buyerId: user.id,
-          }
-        );
-
-        if (confirmResponse.success && confirmResponse.purchase) {
-          setMessage("Payment method saved successfully!");
-          setTimeout(() => {
-            onSuccess();
-            onOpenChange(false);
-          }, 1500);
-        } else {
-          throw new Error(confirmResponse.error || "Payment confirmation failed");
-        }
+        // Payment completed successfully
+        setMessage("Payment authorized successfully!");
+        onSuccess(paymentIntent.id);
+        setTimeout(() => {
+          onOpenChange(false);
+        }, 1500);
       } else if (paymentIntent && paymentIntent.status === "processing") {
         setMessage("Your payment is processing. We'll notify you when it's complete.");
       } else {
@@ -122,10 +92,127 @@ export function PaymentModal({
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
-      setError(errorMessage);
+      onError(errorMessage);
     } finally {
       setLoading(false);
     }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {message && (
+        <Alert>
+          <AlertDescription>{message}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Order Summary */}
+      <div className="p-3 bg-muted/30 rounded-lg">
+        <h3 className="font-semibold mb-2 text-sm">Bid Security Authorization</h3>
+        <div className="space-y-1">
+          <div className="flex justify-between text-sm">
+            <span>Bid Amount</span>
+            <span className="font-medium">${amount}</span>
+          </div>
+          <Separator />
+          <div className="flex justify-between text-sm font-semibold">
+            <span>Authorization Hold</span>
+            <span>$0.00</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            No charge will be made unless you win the auction
+          </p>
+        </div>
+      </div>
+
+      {/* Payment Element */}
+      {clientSecret && (
+        <div className="space-y-3">
+          <PaymentElement
+            options={{
+              layout: "tabs",
+              defaultValues: {
+                billingDetails: {
+                  name: user?.display_name || "",
+                  email: user?.email || "",
+                },
+              },
+            }}
+          />
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Lock className="h-3 w-3" />
+        <span>Your payment information is secure and encrypted</span>
+      </div>
+
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={!stripe || !elements || loading}
+      >
+        <CreditCard className="h-4 w-4 mr-2" />
+        {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+        {loading ? "Processing..." : `Authorize Payment Method`}
+      </Button>
+    </form>
+  );
+}
+
+export function PaymentModal({
+  open,
+  onOpenChange,
+  auctionId,
+  amount,
+  onSuccess,
+  onError,
+  compact = false,
+}: PaymentModalProps) {
+  const { user } = useAuth();
+  const [clientSecret, setClientSecret] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user || !open || amount <= 0) return;
+
+    setLoading(true);
+    // Create PaymentIntent when modal opens
+    paymentService
+      .createPaymentIntent(amount, "usd", {
+        auctionId,
+        type: "bid_security",
+        buyerId: user.id,
+      })
+      .then((result) => {
+        if (result.success && result.paymentIntent) {
+          setClientSecret(result.paymentIntent.clientSecret);
+        } else {
+          onError(result.error || "Failed to initialize payment");
+        }
+      })
+      .catch((err) => {
+        onError(err.message || "Failed to initialize payment");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [user, amount, auctionId, open, onError]);
+
+  const options = {
+    clientSecret,
+    appearance: {
+      theme: 'stripe' as const,
+      variables: {
+        colorPrimary: '#6366f1',
+        colorBackground: '#ffffff',
+        colorText: '#30313d',
+        colorDanger: '#df1b41',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        spacingUnit: '4px',
+        borderRadius: '8px',
+      },
+    },
   };
 
   return (
@@ -172,69 +259,22 @@ export function PaymentModal({
           {/* Payment Form */}
           <Card>
             <CardContent className="pt-6">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-
-                {message && (
-                  <Alert>
-                    <AlertDescription>{message}</AlertDescription>
-                  </Alert>
-                )}
-
-                {/* Order Summary */}
-                <div className="p-3 bg-muted/30 rounded-lg">
-                  <h3 className="font-semibold mb-2 text-sm">Bid Security Authorization</h3>
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span>Bid Amount</span>
-                      <span className="font-medium">${amount}</span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between text-sm font-semibold">
-                      <span>Authorization Hold</span>
-                      <span>$0.00</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      No charge will be made unless you win the auction
-                    </p>
-                  </div>
+              {loading ? (
+                <div className="flex justify-center items-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-
-                {/* Payment Element */}
-                {clientSecret && (
-                  <div className="space-y-3">
-                    <PaymentElement
-                      options={{
-                        layout: "tabs",
-                        defaultValues: {
-                          billingDetails: {
-                            name: user?.display_name || "",
-                            email: user?.email || "",
-                          },
-                        },
-                      }}
-                    />
-                  </div>
-                )}
-
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Lock className="h-3 w-3" />
-                  <span>Your payment information is secure and encrypted</span>
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={!stripe || !elements || loading || !clientSecret}
-                >
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  {loading ? "Processing..." : `Authorize Payment Method`}
-                </Button>
-              </form>
+              ) : clientSecret ? (
+                <Elements stripe={stripePromise} options={options}>
+                  <PaymentFormInner
+                    clientSecret={clientSecret}
+                    auctionId={auctionId}
+                    amount={amount}
+                    onSuccess={onSuccess}
+                    onOpenChange={onOpenChange}
+                    onError={onError}
+                  />
+                </Elements>
+              ) : null}
             </CardContent>
           </Card>
 
