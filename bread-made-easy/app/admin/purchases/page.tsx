@@ -1,7 +1,8 @@
+// app/admin/purchases/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
-import { purchaseService } from "@/lib/purchase-service";
+import { purchaseService, PurchaseWithDetails } from "@/lib/purchase-service";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -19,9 +20,9 @@ import {
   CreditCard,
   CheckCircle,
   XCircle,
-  Clock
+  Clock,
+  User
 } from "lucide-react";
-import { Purchase } from "@/lib/types";
 import { AdminLayout } from "@/components/admin/admin-layout";
 import {
   Select,
@@ -34,14 +35,14 @@ import { Badge } from "@/components/ui/badge";
 import { exportToCSV } from "@/lib/utils";
 
 interface SortConfig {
-  key: keyof Purchase;
+  key: keyof PurchaseWithDetails;
   direction: 'asc' | 'desc';
 }
 
 const ITEMS_PER_PAGE = 10;
 
-export default function PurchasesPage() {
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
+export default function AdminPurchasesPage() {
+  const [purchases, setPurchases] = useState<PurchaseWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
@@ -74,7 +75,7 @@ export default function PurchasesPage() {
     fetchPurchases();
   };
 
-  const handleSort = (key: keyof Purchase) => {
+  const handleSort = (key: keyof PurchaseWithDetails) => {
     setSortConfig(current => ({
       key,
       direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
@@ -88,10 +89,12 @@ export default function PurchasesPage() {
   const filteredPurchases = purchases.filter((purchase) => {
     const term = search.toLowerCase();
     const matchesSearch = (
-      purchase.note.toLowerCase().includes(term) ||
+      purchase.id.toLowerCase().includes(term) ||
       (purchase.stripe_payment_intent_id?.toLowerCase() || "").includes(term) ||
       (purchase.amount.toString().includes(term)) ||
-      (purchase.buyer_id.toLowerCase().includes(term))
+      (purchase.buyer_id.toLowerCase().includes(term)) ||
+      (purchase.buyer_name?.toLowerCase() || "").includes(term) ||
+      (purchase.funnel_title?.toLowerCase() || "").includes(term)
     );
 
     const matchesStatus = statusFilter === 'all' || purchase.payment_status === statusFilter;
@@ -101,13 +104,16 @@ export default function PurchasesPage() {
   });
 
   const sortedPurchases = [...filteredPurchases].sort((a, b) => {
-    if (a[sortConfig.key] === null || a[sortConfig.key] === undefined) return 1;
-    if (b[sortConfig.key] === null || b[sortConfig.key] === undefined) return -1;
+    const aValue = a[sortConfig.key];
+    const bValue = b[sortConfig.key];
+    
+    if (aValue === null || aValue === undefined) return 1;
+    if (bValue === null || bValue === undefined) return -1;
 
-    if (a[sortConfig.key]! < b[sortConfig.key]!) {
+    if (aValue < bValue) {
       return sortConfig.direction === 'asc' ? -1 : 1;
     }
-    if (a[sortConfig.key]! > b[sortConfig.key]!) {
+    if (aValue > bValue) {
       return sortConfig.direction === 'asc' ? 1 : -1;
     }
     return 0;
@@ -117,7 +123,7 @@ export default function PurchasesPage() {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedPurchases = sortedPurchases.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-  const SortIcon = ({ columnKey }: { columnKey: keyof Purchase }) => {
+  const SortIcon = ({ columnKey }: { columnKey: keyof PurchaseWithDetails }) => {
     if (sortConfig.key !== columnKey) return <ChevronUp className="w-4 h-4 opacity-50" />;
     return sortConfig.direction === 'asc' ?
       <ChevronUp className="w-4 h-4" /> :
@@ -232,7 +238,7 @@ export default function PurchasesPage() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
                 <Input
-                  placeholder="Search by ID, amount, payment intent, or buyer..."
+                  placeholder="Search by ID, amount, buyer, or funnel..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-9 max-w-full"
@@ -324,11 +330,11 @@ export default function PurchasesPage() {
                       </TableHead>
                       <TableHead
                         className="cursor-pointer hover:bg-gray-50"
-                        onClick={() => handleSort('provider_fee')}
+                        onClick={() => handleSort('buyer_name')}
                       >
                         <div className="flex items-center">
-                          Fee
-                          <SortIcon columnKey="provider_fee" />
+                          Buyer
+                          <SortIcon columnKey="buyer_name" />
                         </div>
                       </TableHead>
                       <TableHead
@@ -347,15 +353,6 @@ export default function PurchasesPage() {
                         <div className="flex items-center">
                           Payment Method
                           <SortIcon columnKey="type" />
-                        </div>
-                      </TableHead>
-                      <TableHead
-                        className="cursor-pointer hover:bg-gray-50"
-                        onClick={() => handleSort('stripe_payment_intent_id')}
-                      >
-                        <div className="flex items-center">
-                          Payment ID
-                          <SortIcon columnKey="stripe_payment_intent_id" />
                         </div>
                       </TableHead>
                       <TableHead
@@ -383,19 +380,16 @@ export default function PurchasesPage() {
                           ${purchase.amount.toFixed(2)}
                         </TableCell>
                         <TableCell>
-                          ${purchase.provider_fee?.toFixed(2) || '0.00'}
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-gray-500" />
+                            {purchase.buyer_name || purchase.buyer_id}
+                          </div>
                         </TableCell>
                         <TableCell>
                           {getStatusBadge(purchase.payment_status)}
                         </TableCell>
                         <TableCell>
                           {getTypeBadge(purchase.type)}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {purchase.stripe_payment_intent_id 
-                            ? `${purchase.stripe_payment_intent_id.slice(0, 8)}...`
-                            : '-'
-                          }
                         </TableCell>
                         <TableCell>
                           {purchase.created_at
