@@ -126,9 +126,10 @@ function DashboardContent() {
               </CardHeader>
               <CardContent>
                 <div className="grid gap-3">
-                  <Button asChild className="justify-start h-auto p-4">
+                <Button asChild variant="outline" className="justify-start h-auto p-4 bg-transparent">
                     <Link href="/auctions">
                       <Gavel className="h-5 w-5 mr-3" />
+               
                       <div className="text-left">
                         <div className="font-medium">Browse Auctions</div>
                         <div className="text-xs text-muted-foreground">Find and bid on exclusive funnels</div>
