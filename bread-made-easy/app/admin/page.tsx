@@ -11,6 +11,7 @@ import { adminService } from "@/lib/admin-service"
 import { userService } from "@/lib/user-service"
 import { bidService } from "@/lib/bid-service"
 import { auctionService } from "@/lib/auction-service"
+import { purchaseService, PurchaseWithDetails } from "@/lib/purchase-service"
 import { supabase } from "@/lib/supabase-client"
 import type { Purchase, CustomRequest, User, Bid, Auction } from "@/lib/types"
 import { formatDistanceToNow } from "date-fns"
@@ -34,6 +35,7 @@ export default function AdminDashboard() {
   const [recentBids, setRecentBids] = useState<Bid[]>([])
   const [allBids, setAllBids] = useState<Bid[]>([])
   const [auctions, setAuctions] = useState<Auction[]>([])
+  const [activeAuctions, setActiveAuctions] = useState<Auction[]>([])
   const [activities, setActivities] = useState<ActivityEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -42,26 +44,61 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     try {
-      const [statsData, purchasesData, requestsData, usersData, auctionsData] = await Promise.all([
-        adminService.getDashboardStats(),
-        adminService.getRecentPurchases(),
+      const [purchasesData, requestsData, usersData, auctionsData] = await Promise.all([
+        purchaseService.getPurchases(),
         adminService.getCustomRequests(),
         userService.getAllUsers(),
         auctionService.getAuctions(),
       ])
 
+      // Calculate stats
+      const completedPurchases = purchasesData.filter(p => 
+        p.payment_status === 'completed' || p.payment_status === 'succeeded' || p.payment_status === 'paid'
+      );
+      
+      // Debug log to check purchases data
+      console.log("Purchases data:", purchasesData);
+      console.log("Completed purchases:", completedPurchases);
+      
+      const totalRevenue = completedPurchases.reduce((sum, p) => sum + (p.amount || 0), 0);
+      
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const monthlyRevenue = completedPurchases
+        .filter(p => new Date(p.created_at) >= thirtyDaysAgo)
+        .reduce((sum, p) => sum + (p.amount || 0), 0);
+
+      // Get active auctions
+      const activeAuctionsData = auctionsData.filter(auction => 
+        auction.status === 'active'
+      );
+
+      // Create stats object
+      const statsData = {
+        totalRevenue,
+        monthlyRevenue,
+        totalUsers: usersData.length,
+        totalAuctions: auctionsData.length,
+        activeAuctions: activeAuctionsData.length,
+        totalPurchases: purchasesData.length,
+        totalBids: 0,
+        totalLeads: 0,
+        totalRequests: requestsData.length,
+      };
+
       setStats(statsData)
-      setRecentPurchases(purchasesData)
+      setRecentPurchases(purchasesData.slice(0, 5))
       setCustomRequests(requestsData)
       setAllUsers(usersData)
       setAuctions(auctionsData)
+      setActiveAuctions(activeAuctionsData)
 
-      // Fetch all bids using the database service
+      // Fetch all bids
       try {
         const allBidsData = await adminService.getAllBids();
         setAllBids(allBidsData);
+        setStats((prev: any) => ({...prev, totalBids: allBidsData.length}));
         
-        // Sort bids by date and get the most recent ones
         const sortedBids = allBidsData.sort((a, b) => 
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         ).slice(0, 5);
@@ -71,13 +108,14 @@ export default function AdminDashboard() {
         console.error("Error fetching bids:", error);
       }
 
-      // Generate activities from various sources
+      // Generate activities
       const generatedActivities = await generateActivities(
         statsData,
-        purchasesData,
+        purchasesData.slice(0, 5),
         requestsData,
         usersData,
-        recentBids
+        recentBids,
+        activeAuctionsData
       )
       setActivities(generatedActivities)
     } catch (error) {
@@ -88,15 +126,12 @@ export default function AdminDashboard() {
     }
   }
 
-  // Set up realtime subscriptions
   useEffect(() => {
-    // Wait for initial data to load
     if (!stats) return;
     
-    // Channel for all realtime updates
     const channel = supabase.channel('admin-dashboard-updates');
     
-    // Subscribe to purchases table
+    // Purchase updates
     channel.on(
       'postgres_changes',
       {
@@ -105,21 +140,33 @@ export default function AdminDashboard() {
         table: 'purchases'
       },
       async (payload) => {
-        console.log('Purchase update received:', payload)
-        // Refresh purchases data
-        const purchasesData = await adminService.getRecentPurchases();
-        setRecentPurchases(purchasesData);
+        const purchasesData = await purchaseService.getPurchases();
+        setRecentPurchases(purchasesData.slice(0, 5));
         
-        // Refresh stats
-        const statsData = await adminService.getDashboardStats();
-        setStats(statsData);
+        const completedPurchases = purchasesData.filter(p => 
+          p.payment_status === 'completed' || p.payment_status === 'succeeded' || p.payment_status === 'paid'
+        );
         
-        // Add to activity feed
+        const totalRevenue = completedPurchases.reduce((sum, p) => sum + (p.amount || 0), 0);
+        
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const monthlyRevenue = completedPurchases
+          .filter(p => new Date(p.created_at) >= thirtyDaysAgo)
+          .reduce((sum, p) => sum + (p.amount || 0), 0);
+
+        setStats((prev: any) => ({
+          ...prev,
+          totalRevenue,
+          monthlyRevenue,
+          totalPurchases: purchasesData.length
+        }));
+        
         if (payload.eventType === 'INSERT') {
           const newActivity: ActivityEvent = {
             id: `purchase_${payload.new.id}`,
             type: 'purchase',
-            action: 'created',
+            action: 'completed',
             title: 'New Purchase',
             description: `Purchase of $${payload.new.amount} completed`,
             timestamp: new Date(payload.new.created_at),
@@ -130,7 +177,7 @@ export default function AdminDashboard() {
       }
     ).subscribe();
     
-    // Subscribe to custom_requests table
+    // Custom request updates
     channel.on(
       'postgres_changes',
       {
@@ -139,12 +186,10 @@ export default function AdminDashboard() {
         table: 'custom_requests'
       },
       async (payload) => {
-        console.log('Custom request update received:', payload)
-        // Refresh requests data
         const requestsData = await adminService.getCustomRequests();
         setCustomRequests(requestsData);
+        setStats((prev: any) => ({...prev, totalRequests: requestsData.length}));
         
-        // Add to activity feed
         if (payload.eventType === 'INSERT') {
           const newActivity: ActivityEvent = {
             id: `request_${payload.new.id}`,
@@ -160,7 +205,7 @@ export default function AdminDashboard() {
       }
     ).subscribe();
     
-    // Subscribe to bids table
+    // Bid updates
     channel.on(
       'postgres_changes',
       {
@@ -169,24 +214,17 @@ export default function AdminDashboard() {
         table: 'bids'
       },
       async (payload) => {
-        console.log('Bid update received:', payload)
-        // Refresh all bids using the database service
         try {
           const allBidsData = await adminService.getAllBids();
           setAllBids(allBidsData);
+          setStats((prev: any) => ({...prev, totalBids: allBidsData.length}));
           
-          // Sort bids by date and get the most recent ones
           const sortedBids = allBidsData.sort((a, b) => 
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           ).slice(0, 5);
           
           setRecentBids(sortedBids);
           
-          // Refresh stats
-          const statsData = await adminService.getDashboardStats();
-          setStats(statsData);
-          
-          // Add to activity feed
           if (payload.eventType === 'INSERT') {
             const newActivity: ActivityEvent = {
               id: `bid_${payload.new.id}`,
@@ -205,7 +243,7 @@ export default function AdminDashboard() {
       }
     ).subscribe();
     
-    // Subscribe to auctions table
+    // Auction updates
     channel.on(
       'postgres_changes',
       {
@@ -214,18 +252,36 @@ export default function AdminDashboard() {
         table: 'auctions'
       },
       async (payload) => {
-        console.log('Auction update received:', payload)
-        // Refresh auctions data
         const auctionsData = await auctionService.getAuctions();
         setAuctions(auctionsData);
         
-        // Refresh stats
-        const statsData = await adminService.getDashboardStats();
-        setStats(statsData);
+        const activeAuctionsData = auctionsData.filter(auction => 
+          auction.status === 'active'
+        );
+        setActiveAuctions(activeAuctionsData);
+        
+        setStats((prev: any) => ({
+          ...prev,
+          totalAuctions: auctionsData.length,
+          activeAuctions: activeAuctionsData.length
+        }));
+        
+        if (payload.eventType === 'INSERT') {
+          const newActivity: ActivityEvent = {
+            id: `auction_${payload.new.id}`,
+            type: 'auction',
+            action: 'created',
+            title: 'New Auction Created',
+            description: `Auction "${payload.new.title}" created`,
+            timestamp: new Date(payload.new.created_at),
+            metadata: { auction: payload.new }
+          };
+          setActivities(prev => [newActivity, ...prev.slice(0, 9)]);
+        }
       }
     ).subscribe();
     
-    // Subscribe to profiles table (users)
+    // User updates
     channel.on(
       'postgres_changes',
       {
@@ -234,16 +290,10 @@ export default function AdminDashboard() {
         table: 'profiles'
       },
       async (payload) => {
-        console.log('User update received:', payload)
-        // Refresh users data
         const usersData = await userService.getAllUsers();
         setAllUsers(usersData);
+        setStats((prev: any) => ({...prev, totalUsers: usersData.length}));
         
-        // Refresh stats
-        const statsData = await adminService.getDashboardStats();
-        setStats({ ...statsData, totalUsers: usersData.length });
-        
-        // Add to activity feed
         if (payload.eventType === 'INSERT') {
           const newActivity: ActivityEvent = {
             id: `user_${payload.new.id}`,
@@ -259,13 +309,11 @@ export default function AdminDashboard() {
       }
     ).subscribe();
 
-    // Cleanup function
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [stats]); // Only re-run if stats change
+  }, [stats]);
 
-  // Fetch initial data
   useEffect(() => {
     fetchData()
   }, [])
@@ -280,11 +328,12 @@ export default function AdminDashboard() {
     purchasesData: Purchase[],
     requestsData: CustomRequest[],
     usersData: User[],
-    bidsData: Bid[]
+    bidsData: Bid[],
+    activeAuctionsData: Auction[]
   ): Promise<ActivityEvent[]> => {
     const activities: ActivityEvent[] = []
 
-    // Add user signup activities
+    // User signup activities
     const recentUsers = usersData
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 3)
@@ -301,7 +350,7 @@ export default function AdminDashboard() {
       })
     })
 
-    // Add bid activities
+    // Bid activities
     bidsData.forEach(bid => {
       activities.push({
         id: `bid_${bid.id}`,
@@ -314,7 +363,7 @@ export default function AdminDashboard() {
       })
     })
 
-    // Add purchase activities
+    // Purchase activities
     purchasesData.slice(0, 3).forEach(purchase => {
       activities.push({
         id: `purchase_${purchase.id}`,
@@ -327,7 +376,20 @@ export default function AdminDashboard() {
       })
     })
 
-    // Add custom request activities
+    // Active auction activities
+    activeAuctionsData.slice(0, 3).forEach(auction => {
+      activities.push({
+        id: `auction_${auction.id}`,
+        type: 'auction',
+        action: 'active',
+        title: 'Active Auction',
+        description: `Auction "${auction.title}" is active with starting price $${auction.starting_price}`,
+        timestamp: new Date(auction.created_at),
+        metadata: { auction }
+      })
+    })
+
+    // Custom request activities
     requestsData.slice(0, 3).forEach(request => {
       activities.push({
         id: `request_${request.id}`,
@@ -399,9 +461,8 @@ export default function AdminDashboard() {
           </Button>
         </div>
 
-        {stats && <StatsCards stats={{ ...stats, totalUsers: allUsers.length }} />}
+        {stats && <StatsCards stats={stats} />}
 
-        {/* Rest of the component remains the same */}
         <div className="grid gap-6 lg:grid-cols-3">
           <Card className="lg:col-span-2">
             <CardHeader>
@@ -506,7 +567,6 @@ export default function AdminDashboard() {
             <CardContent>
               <div className="space-y-4">
                 {recentBids.map((bid) => {
-                  // Find the auction for this bid
                   const auction = auctions.find(a => a.id === bid.auction_id);
                   return (
                     <div key={bid.id} className="flex items-center justify-between p-3 border rounded-lg">
