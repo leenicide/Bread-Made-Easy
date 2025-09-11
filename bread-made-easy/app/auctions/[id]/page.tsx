@@ -29,7 +29,7 @@ import {
     CheckCircle,
 } from "lucide-react";
 import Link from "next/link";
-import router from "next/router";
+import { useRouter } from "next/navigation";
 
 export default function AuctionDetailPage() {
     const params = useParams();
@@ -41,7 +41,8 @@ export default function AuctionDetailPage() {
         error: "",
     });
     const [redirectTo, setRedirectTo] = useState<string | null>(null);
-
+    const router = useRouter();
+    
     useEffect(() => {
         let mounted = true;
 
