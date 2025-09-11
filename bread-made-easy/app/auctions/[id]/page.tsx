@@ -40,9 +40,8 @@ export default function AuctionDetailPage() {
         loading: true,
         error: "",
     });
-    const [redirectTo, setRedirectTo] = useState<string | null>(null);
     const router = useRouter();
-    
+
     useEffect(() => {
         let mounted = true;
 
@@ -102,22 +101,13 @@ export default function AuctionDetailPage() {
         };
     }, [auctionId]);
 
-    useEffect(() => {
-        if (redirectTo) {
-            const timer = setTimeout(() => {
-                router.push(redirectTo);
-            }, 1500);
-
-            return () => clearTimeout(timer);
-        }
-    }, [redirectTo, router]);
-
     const handleBidPlaced = useCallback(
         async (updatedAuction: Auction) => {
             try {
                 const bidsData = await auctionService.getBidsByAuction(
                     auctionId
                 );
+
                 setState((prev) => ({
                     ...prev,
                     bids: bidsData,
@@ -133,13 +123,12 @@ export default function AuctionDetailPage() {
                         : null,
                 }));
 
-                // Set redirect after state update
-                setRedirectTo(`/post-bid/${auctionId}`);
+                router.push(`/post-bid/${auctionId}`);
             } catch (error) {
                 console.error("Error refreshing bids:", error);
             }
         },
-        [auctionId]
+        [auctionId, router]
     );
 
     const handleBuyNow = useCallback((updatedAuction: Auction) => {
@@ -211,14 +200,10 @@ export default function AuctionDetailPage() {
             : auction.starting_price;
     const startingPrice = auction.starting_price;
     const imageUrl = auction.funnel?.image_url || "/placeholder.svg";
-    // In the auction detail page (auctions/[id]/page.tsx), update the category display
     const category =
         auction.funnel?.category?.name ||
         auction.category?.name ||
         "Uncategorized";
-
-    // Then in the JSX, use this category variable
-    <Badge variant="secondary">{category}</Badge>;
 
     return (
         <div className="min-h-screen">
@@ -359,7 +344,7 @@ export default function AuctionDetailPage() {
                             auction={auction}
                             onBidPlaced={handleBidPlaced}
                             onBuyNow={handleBuyNow}
-                            redirecting={!!redirectTo}
+                            redirecting={false}
                         />
 
                         {/* Bid History */}

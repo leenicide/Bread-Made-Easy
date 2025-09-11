@@ -4,6 +4,7 @@ export type UserRole = 'user' | 'admin'
 export type LeaseStatus = 'pending' | 'active' | 'expired' | 'cancelled'
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded'
 export type PurchaseType = 'stripe' | 'paypal'
+export type BidStatus = 'pending' | 'confirmed' | 'rejected' | 'pending_offer' | 'expired';
 
 export interface User {
   id: string
@@ -79,7 +80,7 @@ export interface Bid {
   bidder_id: string
   amount: number
   offer_amount?: number // Add this field
-  status: string
+  status: BidStatus // Update the status type
   created_at: Date
   payment_intent_id?: string; // Add this field
   // Relations

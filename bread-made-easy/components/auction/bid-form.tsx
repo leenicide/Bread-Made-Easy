@@ -21,14 +21,12 @@ interface BidFormProps {
   auction: Auction;
   onBidPlaced: (updatedAuction: Auction) => void;
   onBuyNow: (updatedAuction: Auction) => void;
-  redirecting?: boolean;
 }
 
 export function BidForm({
   auction,
   onBidPlaced,
   onBuyNow,
-  redirecting,
 }: BidFormProps) {
   const { user } = useAuth();
   const [bidAmount, setBidAmount] = useState("");
@@ -173,13 +171,11 @@ const handlePaymentSuccess = async (paymentIntentId: string) => {
           <Button
             type="submit"
             className="w-full"
-            disabled={loading || redirecting}>
-            {loading || redirecting ? (
+            disabled={loading}>
+            {loading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                {redirecting
-                  ? "Redirecting..."
-                  : "Placing Bid..."}
+                Placing Bid...
               </>
             ) : (
               <>
