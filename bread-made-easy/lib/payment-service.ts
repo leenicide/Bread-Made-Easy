@@ -1,493 +1,236 @@
-// lib/purchase-service.ts
+import type { Purchase } from "./types"
+import { databaseService } from "./database-service"
+import { createClient } from '@supabase/supabase-js'
 
-import { supabase } from "./supabase-client"
-import { Purchase } from './types'
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
-export interface PurchaseWithDetails extends Purchase {
-  funnel_title?: string
-  buyer_name?: string
-  buyer_email?: string
+export interface PaymentIntent {
+  id: string
+  amount: number
+  currency: string
+  status: "requires_payment_method" | "requires_confirmation" | "processing" | "succeeded" | "canceled"
+  clientSecret: string
+  metadata: Record<string, string>
 }
 
-export interface PurchaseFilters {
-  status?: string
-  type?: string
-  note?: string
-  startDate?: string
-  endDate?: string
-  minAmount?: number
-  maxAmount?: number
+export interface PaymentResponse {
+  success: boolean
+  paymentIntent?: PaymentIntent
+  error?: string
+  purchase?: Purchase
 }
 
-export const purchaseService = {
-  /**
-   * Get all purchases with optional filters
-   */
-  async getPurchases(filters?: PurchaseFilters): Promise<PurchaseWithDetails[]> {
+export const paymentService = {
+  async createPaymentIntent(
+    amount: number,
+    currency = "usd",
+    metadata: Record<string, string> = {},
+  ): Promise<PaymentResponse> {
     try {
-      let query = supabase
-        .from('purchases')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      // Apply filters
-      if (filters?.status) {
-        query = query.eq('payment_status', filters.status)
-      }
+      const { data, error } = await supabase.functions.invoke('stripe-create-payment-intent', {
+        body: { 
+          amount, 
+          currency, 
+          metadata 
+        }
+      })
       
-      if (filters?.type) {
-        query = query.eq('type', filters.type)
-      }
+      if (error) throw error
       
-      if (filters?.note) {
-        query = query.eq('note', filters.note)
-      }
-      
-      if (filters?.startDate) {
-        query = query.gte('created_at', filters.startDate)
-      }
-      
-      if (filters?.endDate) {
-        query = query.lte('created_at', filters.endDate)
-      }
-      
-      if (filters?.minAmount !== undefined) {
-        query = query.gte('amount', filters.minAmount)
-      }
-      
-      if (filters?.maxAmount !== undefined) {
-        query = query.lte('amount', filters.maxAmount)
-      }
-
-      const { data: purchases, error } = await query
-
-      if (error) {
-        console.error('Error fetching purchases:', error)
-        throw error
-      }
-
-      // Get additional details for each purchase
-      const purchasesWithDetails = await Promise.all(
-        purchases.map(async (purchase) => {
-          let funnel_title = '';
-          let buyer_name = '';
-          let buyer_email = '';
-
-          try {
-            // Get funnel title
-            const { data: funnelData } = await supabase
-              .from('funnels')
-              .select('title')
-              .eq('id', purchase.funnel_id)
-              .single();
-            
-            funnel_title = funnelData?.title || '';
-
-            // Get buyer info from auth.users (requires RLS to be configured properly)
-            // Since we can't directly join with auth.users, we'll use a different approach
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('display_name')
-              .eq('id', purchase.buyer_id)
-              .single();
-            
-            buyer_name = profileData?.display_name || '';
-
-            // For email, we might need to use the admin API or ensure proper RLS policies
-            // For now, we'll just get the ID
-          } catch (err) {
-            console.error('Error fetching purchase details:', err);
-          }
-
-          return {
-            ...purchase,
-            funnel_title,
-            buyer_name: buyer_name || purchase.buyer_id, // Fallback to ID if no name
-          };
-        })
-      );
-
-      return purchasesWithDetails;
-    } catch (error) {
-      console.error('Error in getPurchases:', error)
-      throw error
-    }
-  },
-
-  /**
-   * Get a single purchase by ID
-   */
-  async getPurchaseById(id: string): Promise<PurchaseWithDetails | null> {
-    try {
-      const { data: purchase, error } = await supabase
-        .from('purchases')
-        .select('*')
-        .eq('id', id)
-        .single()
-
-      if (error) {
-        console.error('Error fetching purchase:', error)
-        return null
-      }
-
-      // Get additional details
-      let funnel_title = '';
-      let buyer_name = '';
-
-      try {
-        // Get funnel title
-        const { data: funnelData } = await supabase
-          .from('funnels')
-          .select('title')
-          .eq('id', purchase.funnel_id)
-          .single();
-        
-        funnel_title = funnelData?.title || '';
-
-        // Get buyer name from profiles
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('display_name')
-          .eq('id', purchase.buyer_id)
-          .single();
-        
-        buyer_name = profileData?.display_name || '';
-      } catch (err) {
-        console.error('Error fetching purchase details:', err);
-      }
-
       return {
-        ...purchase,
-        funnel_title,
-        buyer_name: buyer_name || purchase.buyer_id,
+        success: true,
+        paymentIntent: {
+          id: data.paymentIntentId,
+          amount: data.amount || amount * 100,
+          currency: data.currency || currency,
+          status: "requires_payment_method",
+          clientSecret: data.clientSecret,
+          metadata: data.metadata || metadata
+        }
       }
     } catch (error) {
-      console.error('Error in getPurchaseById:', error)
-      return null
+      console.error('Error creating payment intent:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to create payment intent'
+      }
     }
   },
 
-  /**
-   * Get purchases by user ID
-   */
-  async getPurchasesByUserId(userId: string): Promise<PurchaseWithDetails[]> {
+  async confirmPayment(
+    paymentIntentId: string, 
+    paymentMethodId: string,
+    metadata: Record<string, string> = {}
+  ): Promise<PaymentResponse> {
     try {
-      const { data: purchases, error } = await supabase
-        .from('purchases')
-        .select('*')
-        .eq('buyer_id', userId)
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching user purchases:', error)
-        throw error
+      const { data, error } = await supabase.functions.invoke('confirm-payment', {
+        body: { 
+          paymentIntentId, 
+          auctionId: metadata.auctionId,
+          type: metadata.type,
+          buyerId: metadata.buyerId
+        }
+      })
+      
+      if (error) throw error
+      
+      return {
+        success: true,
+        paymentIntent: {
+          id: paymentIntentId,
+          amount: data.amount || 0,
+          currency: 'usd',
+          status: "succeeded",
+          clientSecret: '',
+          metadata
+        },
+        purchase: data.purchase
       }
-
-      // Get funnel titles
-      const purchasesWithDetails = await Promise.all(
-        purchases.map(async (purchase) => {
-          let funnel_title = '';
-
-          try {
-            const { data: funnelData } = await supabase
-              .from('funnels')
-              .select('title')
-              .eq('id', purchase.funnel_id)
-              .single();
-            
-            funnel_title = funnelData?.title || '';
-          } catch (err) {
-            console.error('Error fetching funnel details:', err);
-          }
-
-          return {
-            ...purchase,
-            funnel_title,
-          }
-        })
-      );
-
-      return purchasesWithDetails
     } catch (error) {
-      console.error('Error in getPurchasesByUserId:', error)
-      throw error
+      console.error('Error confirming payment:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Payment confirmation failed'
+      }
     }
   },
 
-  /**
-   * Get purchases by funnel ID
-   */
-  async getPurchasesByFunnelId(funnelId: string): Promise<Purchase[]> {
-    try {
-      const { data, error } = await supabase
-        .from('purchases')
-        .select('*')
-        .eq('funnel_id', funnelId)
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching funnel purchases:', error)
-        throw error
-      }
-
-      return data
-    } catch (error) {
-      console.error('Error in getPurchasesByFunnelId:', error)
-      throw error
-    }
-  },
-
-  /**
-   * Create a new purchase record
-   */
   async createPurchase(purchase: Omit<Purchase, 'id' | 'created_at' | 'updated_at'>): Promise<Purchase | null> {
     try {
-      const { data, error } = await supabase
-        .from('purchases')
-        .insert([purchase])
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Error creating purchase:', error)
-        return null
+      const dbPurchase = await databaseService.createPurchase(purchase)
+      if (dbPurchase) {
+        return dbPurchase
       }
-
-      return data
+      
+      console.error('Failed to create purchase in database')
+      return null
     } catch (error) {
-      console.error('Error in createPurchase:', error)
+      console.error('Error creating purchase in database:', error)
       return null
     }
   },
 
-  /**
-   * Update purchase status
-   */
   async updatePurchaseStatus(id: string, paymentStatus: string): Promise<Purchase | null> {
     try {
-      const { data, error } = await supabase
-        .from('purchases')
-        .update({ 
-          payment_status: paymentStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Error updating purchase status:', error)
-        return null
+      const dbPurchase = await databaseService.updatePurchaseStatus(id, paymentStatus)
+      if (dbPurchase) {
+        return dbPurchase
       }
-
-      return data
+      
+      console.error('Failed to update purchase in database')
+      return null
     } catch (error) {
-      console.error('Error in updatePurchaseStatus:', error)
+      console.error('Error updating purchase in database:', error)
       return null
     }
   },
 
-  /**
-   * Update purchase details
-   */
-  async updatePurchase(id: string, updates: Partial<Purchase>): Promise<Purchase | null> {
+  async getPurchases(): Promise<Purchase[]> {
     try {
-      const { data, error } = await supabase
-        .from('purchases')
-        .update({ 
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Error updating purchase:', error)
-        return null
-      }
-
-      return data
+      const dbPurchases = await databaseService.getPurchases()
+      return dbPurchases
     } catch (error) {
-      console.error('Error in updatePurchase:', error)
+      console.error('Error fetching purchases from database:', error)
+      return []
+    }
+  },
+
+  async getPurchaseById(id: string): Promise<Purchase | null> {
+    try {
+      const purchase = await databaseService.getPurchaseById(id)
+      return purchase
+    } catch (error) {
+      console.error('Error fetching purchase:', error)
       return null
     }
   },
 
-  /**
-   * Get purchase statistics
-   */
-  async getPurchaseStats(timeframe: 'day' | 'week' | 'month' | 'year' = 'month') {
+  async getPurchasesByUserId(userId: string): Promise<Purchase[]> {
     try {
-      const { data, error } = await supabase
-        .from('purchases')
-        .select('amount, created_at, payment_status')
-        .eq('payment_status', 'completed')
-        .order('created_at', { ascending: true })
+      const purchases = await databaseService.getPurchasesByUserId(userId)
+      return purchases
+    } catch (error) {
+      console.error('Error fetching user purchases:', error)
+      return []
+    }
+  },
 
-      if (error) {
-        console.error('Error fetching purchase stats:', error)
-        throw error
+  // Legacy method for backward compatibility
+  async processPayment(
+    amount: number,
+    buyerId: string,
+    funnelId: string,
+    type: 'auction' | 'buy_now' = 'buy_now',
+    paymentMethod = 'stripe',
+    metadata: Record<string, string> = {}
+  ): Promise<PaymentResponse> {
+    try {
+      // Create payment intent
+      const paymentResponse = await this.createPaymentIntent(amount, 'usd', {
+        ...metadata,
+        buyerId,
+        funnelId,
+        type
+      })
+      
+      if (!paymentResponse.success || !paymentResponse.paymentIntent) {
+        return paymentResponse
       }
 
-      // Calculate total revenue
-      const totalRevenue = data.reduce((sum, purchase) => sum + purchase.amount, 0)
+      return paymentResponse
+    } catch (error) {
+      console.error('Error processing payment:', error)
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : "Payment processing failed" 
+      }
+    }
+  },
 
-      // Calculate successful purchases count
-      const successfulPurchases = data.filter(p => p.payment_status === 'completed').length
-
-      // Calculate average order value
-      const averageOrderValue = successfulPurchases > 0 ? totalRevenue / successfulPurchases : 0
-
+  // Method to verify payment status with Stripe
+  async verifyPaymentStatus(paymentIntentId: string): Promise<PaymentResponse> {
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-payment', {
+        body: { paymentIntentId }
+      })
+      
+      if (error) throw error
+      
       return {
-        totalRevenue,
-        successfulPurchases,
-        averageOrderValue,
-        totalPurchases: data.length
+        success: data.status === 'succeeded',
+        paymentIntent: {
+          id: paymentIntentId,
+          amount: data.amount || 0,
+          currency: data.currency || 'usd',
+          status: data.status,
+          clientSecret: '',
+          metadata: data.metadata || {}
+        }
       }
     } catch (error) {
-      console.error('Error in getPurchaseStats:', error)
-      throw error
+      console.error('Error verifying payment status:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to verify payment status'
+      }
     }
   },
 
-  /**
-   * Get recent purchases
-   */
-  async getRecentPurchases(limit: number = 10): Promise<PurchaseWithDetails[]> {
+  // Method to handle payment failures and refunds if needed
+  async handlePaymentFailure(paymentIntentId: string, reason: string): Promise<boolean> {
     try {
-      const { data: purchases, error } = await supabase
-        .from('purchases')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(limit)
-
-      if (error) {
-        console.error('Error fetching recent purchases:', error)
-        throw error
-      }
-
-      // Get additional details
-      const purchasesWithDetails = await Promise.all(
-        purchases.map(async (purchase) => {
-          let funnel_title = '';
-          let buyer_name = '';
-
-          try {
-            // Get funnel title
-            const { data: funnelData } = await supabase
-              .from('funnels')
-              .select('title')
-              .eq('id', purchase.funnel_id)
-              .single();
-            
-            funnel_title = funnelData?.title || '';
-
-            // Get buyer name from profiles
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('display_name')
-              .eq('id', purchase.buyer_id)
-              .single();
-            
-            buyer_name = profileData?.display_name || '';
-          } catch (err) {
-            console.error('Error fetching purchase details:', err);
-          }
-
-          return {
-            ...purchase,
-            funnel_title,
-            buyer_name: buyer_name || purchase.buyer_id,
-          };
-        })
-      );
-
-      return purchasesWithDetails;
-    } catch (error) {
-      console.error('Error in getRecentPurchases:', error)
-      throw error
-    }
-  },
-
-  /**
-   * Search purchases
-   */
-  async searchPurchases(query: string): Promise<PurchaseWithDetails[]> {
-    try {
-      // Search across multiple fields using OR
-      const { data: purchases, error } = await supabase
-        .from('purchases')
-        .select('*')
-        .or(`stripe_payment_intent_id.ilike.%${query}%,paypal_order_id.ilike.%${query}%,paypal_transaction_id.ilike.%${query}%`)
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error searching purchases:', error)
-        throw error
-      }
-
-      // Get additional details
-      const purchasesWithDetails = await Promise.all(
-        purchases.map(async (purchase) => {
-          let funnel_title = '';
-          let buyer_name = '';
-
-          try {
-            // Get funnel title
-            const { data: funnelData } = await supabase
-              .from('funnels')
-              .select('title')
-              .eq('id', purchase.funnel_id)
-              .single();
-            
-            funnel_title = funnelData?.title || '';
-
-            // Get buyer name from profiles
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('display_name')
-              .eq('id', purchase.buyer_id)
-              .single();
-            
-            buyer_name = profileData?.display_name || '';
-          } catch (err) {
-            console.error('Error fetching purchase details:', err);
-          }
-
-          return {
-            ...purchase,
-            funnel_title,
-            buyer_name: buyer_name || purchase.buyer_id,
-          };
-        })
-      );
-
-      return purchasesWithDetails;
-    } catch (error) {
-      console.error('Error in searchPurchases:', error)
-      throw error
-    }
-  },
-
-  /**
-   * Delete a purchase (admin only)
-   */
-  async deletePurchase(id: string): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('purchases')
-        .delete()
-        .eq('id', id)
-
-      if (error) {
-        console.error('Error deleting purchase:', error)
-        return false
-      }
-
+      const { error } = await supabase.functions.invoke('handle-payment-failure', {
+        body: { paymentIntentId, reason }
+      })
+      
+      if (error) throw error
+      
       return true
     } catch (error) {
-      console.error('Error in deletePurchase:', error)
+      console.error('Error handling payment failure:', error)
       return false
     }
   }
