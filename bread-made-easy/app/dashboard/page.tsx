@@ -5,10 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Gavel, ShoppingBag, MessageSquare, Download, TrendingUp } from "lucide-react"
 import Link from "next/link"
+import { RecentActivity } from "@/components/recent-activity"
 
 function DashboardContent() {
-  // Mock user data - in real app, this would come from auth context
-  const userId = "2"
 
   return (
     <div className="min-h-screen">
@@ -68,55 +67,7 @@ function DashboardContent() {
           </div>
 
           <div className="grid gap-8 lg:grid-cols-2">
-            {/* Recent Activity */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>Your latest marketplace interactions</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-4 p-3 border rounded-lg">
-                    <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
-                      <ShoppingBag className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">Purchased E-commerce Funnel</p>
-                      <p className="text-xs text-muted-foreground">2 hours ago • $899</p>
-                    </div>
-                    <Badge variant="default">Completed</Badge>
-                  </div>
-
-                  <div className="flex items-center gap-4 p-3 border rounded-lg">
-                    <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Gavel className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">Bid on SaaS Lead Generation</p>
-                      <p className="text-xs text-muted-foreground">5 hours ago • $1,200</p>
-                    </div>
-                    <Badge variant="secondary">Winning</Badge>
-                  </div>
-
-                  <div className="flex items-center gap-4 p-3 border rounded-lg">
-                    <div className="h-10 w-10 bg-orange-100 rounded-full flex items-center justify-center">
-                      <MessageSquare className="h-5 w-5 text-orange-600" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">Custom Request Update</p>
-                      <p className="text-xs text-muted-foreground">1 day ago • In Progress</p>
-                    </div>
-                    <Badge variant="outline">Active</Badge>
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-4 border-t">
-                  <Button variant="outline" className="w-full bg-transparent">
-                    View All Activity
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <RecentActivity limit={5} />
 
             {/* Quick Actions */}
             <Card>
@@ -182,7 +133,7 @@ function DashboardContent() {
                 </Link>
               </Button>
             </div>
-            <RequestTracker userId={userId} />
+            <RequestTracker userId={"dashboard"} />
           </div>
         </div>
       </main>

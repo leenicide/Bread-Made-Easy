@@ -39,7 +39,7 @@ export const customRequestService = {
   },
 
   // Get all custom requests (for admin)
-  async getCustomRequests(): Promise<CustomRequest[]> {
+  async getCustomRequests(userId: string): Promise<CustomRequest[]> {
     const { data, error } = await supabase
       .from('custom_requests')
       .select('*')
