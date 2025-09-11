@@ -15,6 +15,8 @@ import { User, LogOut, Settings, Menu, Crown } from "lucide-react"
 import { useState } from "react"
 import { CustomRequestModal } from "@/components/custom-request/custom-request-modal"
 
+import Image from "next/image"
+
 // Define user path types
 type UserPath = 'leasing' | 'auction' | 'custom';
 
@@ -56,10 +58,11 @@ export function Header() {
 
           {/* Logo - left aligned with specific spacing */}
           <div className="flex items-center gap-2 md:ml-4 lg:ml-6">
-            <div className="h-8 w-8 rounded bg-primary flex items-center justify-center">
+            {/* <div className="h-8 w-8 rounded bg-primary flex items-center justify-center">
               <span className="text-primary-foreground font-bold text-sm">B</span>
             </div>
-            <span className="font-bold text-xl hidden sm:block">Bread Made Easy</span>
+            <span className="font-bold text-xl hidden sm:block">Bread Made Easy</span> */}
+            <Image src="/textlogo.png" alt="Path Logo" width={300} height={100} className="ml-2"/>
           </div>
 
           {/* Centered navigation for desktop - Empty for now */}
