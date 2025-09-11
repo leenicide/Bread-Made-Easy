@@ -149,7 +149,7 @@ export function QuickStats() {
   }, [userId, user?.email])
 
   const purchasesSubtext = useMemo(() => {
-    return `${new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(purchasesTotal)} total spent`
+    return `${new Intl.NumberFormat('en-US', { style: "currency", currency: "USD" }).format(purchasesTotal)} total spent`
   }, [purchasesTotal])
 
   return (
