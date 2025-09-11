@@ -41,6 +41,7 @@ export default function AdminDashboard() {
   const [refreshing, setRefreshing] = useState(false)
   const [showRequestsModal, setShowRequestsModal] = useState(false)
   const [showBidsModal, setShowBidsModal] = useState(false)
+  const [showPurchasesModal, setShowPurchasesModal] = useState(false)
 
   const fetchData = async () => {
     try {
@@ -496,7 +497,11 @@ export default function AdminDashboard() {
                     </Badge>
                   </div>
                 ))}
-                <Button variant="outline" className="w-full bg-transparent">
+                <Button 
+                  variant="outline" 
+                  className="w-full bg-transparent"
+                  onClick={() => setShowPurchasesModal(true)}
+                >
                   <Eye className="h-4 w-4 mr-2" />
                   View All Purchases
                 </Button>
@@ -701,6 +706,52 @@ export default function AdminDashboard() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* All Purchases Modal */}
+        <Dialog open={showPurchasesModal} onOpenChange={setShowPurchasesModal}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>All Purchases</DialogTitle>
+              <DialogDescription>
+                Complete list of all purchase transactions
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              {recentPurchases.map((purchase) => (
+                <div key={purchase.id} className="p-4 border rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium text-lg">${purchase.amount}</p>
+                    <Badge
+                      variant={purchase.payment_status === "completed" ? "default" : "secondary"}
+                    >
+                      {purchase.payment_status}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">
+                      Type: {purchase.note === "buy_now" ? "Buy Now" : purchase.note === "auction" ? "Auction" : "Direct"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Purchase ID: {purchase.id}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {formatDistanceToNow(new Date(purchase.created_at), { addSuffix: true })}
+                    </span>
+                    <Badge variant="outline">
+                      {new Date(purchase.created_at).toLocaleString()}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+              {recentPurchases.length === 0 && (
+                <p className="text-center text-muted-foreground py-4">No purchases found</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
 
         {/* All Bids Modal */}
         <Dialog open={showBidsModal} onOpenChange={setShowBidsModal}>
