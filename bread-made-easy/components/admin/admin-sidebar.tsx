@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import { authService } from "@/lib/auth"
 import type { User } from "@/lib/types" // ← This stays as User type
+import Image from "next/image"
 
 interface AdminSidebarProps {
   user: User
@@ -96,8 +97,8 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
     <div className="w-64 bg-white border-r border-gray-200 min-h-screen">
       <div className="p-6">
         <div className="flex items-center space-x-3 mb-6">
-          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-            <Shield className="w-6 h-6 text-white" />
+          <div className="w-15 h-15 rounded-lg flex items-center justify-center">
+            <Image src="/icon-logo.png" alt="Path Logo" width={300} height={300} className="ml-2"/>
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Admin Panel</h1>
