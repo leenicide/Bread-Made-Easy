@@ -18,7 +18,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { paymentService } from "@/lib/payment-service";
+import { paymentService } from "@/lib/paymentService";
 import { useAuth } from "@/contexts/auth-context";
 import { CreditCard, Lock, Shield, CheckCircle, Info, Loader2 } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
@@ -30,7 +30,7 @@ interface PaymentModalProps {
   onOpenChange: (open: boolean) => void;
   auctionId: string;
   amount: number;
-  onSuccess: (paymentIntentId: string) => void;
+  onSuccess: (setupIntentId: string, paymentMethodId: string) => void;
   onError: (error: string) => void;
   compact?: boolean;
 }
@@ -47,7 +47,7 @@ function PaymentFormInner({
   clientSecret: string;
   auctionId: string;
   amount: number;
-  onSuccess: (paymentIntentId: string) => void;
+  onSuccess: (setupIntentId: string, paymentMethodId: string) => void;
   onOpenChange: (open: boolean) => void;
   onError: (error: string) => void;
 }) {
@@ -65,7 +65,8 @@ function PaymentFormInner({
     setLoading(true);
 
     try {
-      const { error: submitError, paymentIntent } = await stripe.confirmPayment({
+      // Use confirmSetup for card setup instead of payment
+      const { error: submitError, setupIntent } = await stripe.confirmSetup({
         elements,
         confirmParams: {
           return_url: `${window.location.origin}/post-bid?auctionId=${auctionId}`,
@@ -74,21 +75,19 @@ function PaymentFormInner({
       });
 
       if (submitError) {
-        onError(submitError.message || "An error occurred during payment");
+        onError(submitError.message || "An error occurred during payment setup");
         throw new Error(submitError.message);
       }
 
-      if (paymentIntent && paymentIntent.status === "succeeded") {
-        // Payment completed successfully
-        setMessage("Payment authorized successfully!");
-        onSuccess(paymentIntent.id);
+      if (setupIntent && setupIntent.status === "succeeded") {
+        // Payment method setup completed successfully
+        setMessage("Payment method authorized successfully!");
+        onSuccess(setupIntent.id, setupIntent.payment_method as string);
         setTimeout(() => {
           onOpenChange(false);
         }, 1500);
-      } else if (paymentIntent && paymentIntent.status === "processing") {
-        setMessage("Your payment is processing. We'll notify you when it's complete.");
       } else {
-        setMessage("Please complete the payment process.");
+        setMessage("Please complete the payment method setup.");
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
@@ -154,7 +153,7 @@ function PaymentFormInner({
       >
         <CreditCard className="h-4 w-4 mr-2" />
         {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-        {loading ? "Processing..." : `Authorize Payment Method`}
+        {loading ? "Setting up..." : `Authorize Payment Method`}
       </Button>
     </form>
   );
@@ -177,22 +176,21 @@ export function PaymentModal({
     if (!user || !open || amount <= 0) return;
 
     setLoading(true);
-    // Create PaymentIntent when modal opens
+    // Create SetupIntent when modal opens instead of PaymentIntent
     paymentService
-      .createPaymentIntent(amount, "usd", {
+      .createSetupIntent({
         auctionId,
-        type: "bid_security",
         buyerId: user.id,
       })
       .then((result) => {
-        if (result.success && result.paymentIntent) {
-          setClientSecret(result.paymentIntent.clientSecret);
+        if (result.success && result.setupIntent) {
+          setClientSecret(result.setupIntent.clientSecret);
         } else {
-          onError(result.error || "Failed to initialize payment");
+          onError(result.error || "Failed to initialize payment setup");
         }
       })
       .catch((err) => {
-        onError(err.message || "Failed to initialize payment");
+        onError(err.message || "Failed to initialize payment setup");
       })
       .finally(() => {
         setLoading(false);
@@ -221,7 +219,7 @@ export function PaymentModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-primary" />
-            Secure Payment Authorization
+            Secure Payment Method Setup
           </DialogTitle>
           <DialogDescription>
             We need to securely store your payment method for this bid

@@ -270,8 +270,13 @@ export class DatabaseService {
     const { data, error } = await supabase
       .from('bids')
       .insert([{
-        ...bid,
-        payment_intent_id: bid.payment_intent_id || null // Add payment intent ID
+        auction_id: bid.auction_id,
+        bidder_id: bid.bidder_id,
+        amount: bid.amount,
+        setup_intent_id: bid.setup_intent_id,
+        payment_method_id: bid.payment_method_id,
+        status: bid.status,
+        offer_amount: bid.offer_amount
       }])
       .select()
       .single()

@@ -191,7 +191,9 @@ export const auctionService = {
         auctionId: string,
         userId: string,
         amount: number,
-        paymentIntentId: string
+        setupIntentId: string,
+        paymentMethodId: string
+
     ): Promise<{
         success: boolean;
         error?: string;
@@ -204,7 +206,9 @@ export const auctionService = {
                 auction_id: auctionId,
                 bidder_id: userId,
                 amount,
-                payment_intent_id: paymentIntentId,
+                setup_intent_id: setupIntentId,
+
+            payment_method_id: paymentMethodId,
                 status: 'pending' // Add the required status field
             });
 

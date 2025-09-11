@@ -13,6 +13,7 @@ import { Gavel, Zap, Loader2 } from "lucide-react";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { PaymentModal } from "@/components/payment/payment-modal";
+import { paymentService } from "@/lib/paymentService";
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -21,12 +22,14 @@ interface BidFormProps {
   auction: Auction;
   onBidPlaced: (updatedAuction: Auction) => void;
   onBuyNow: (updatedAuction: Auction) => void;
+  redirecting?: boolean;
 }
 
 export function BidForm({
   auction,
   onBidPlaced,
   onBuyNow,
+  redirecting,
 }: BidFormProps) {
   const { user } = useAuth();
   const [bidAmount, setBidAmount] = useState("");
@@ -71,31 +74,47 @@ export function BidForm({
     window.location.href = `/checkout?auctionId=${auction.id}&type=buy_now&amount=${auction.buy_now}`;
   };
 
-  // In bid-form.tsx, update the handlePaymentSuccess function
-const handlePaymentSuccess = async (paymentIntentId: string) => {
+  const handlePaymentSuccess = async (setupIntentId: string, paymentMethodId: string) => {
     try {
-        setLoading(true);
-        // Only place the bid after successful payment authorization
-        const response = await auctionService.placeBid(
-            auction.id,
-            user!.id,
-            pendingBidAmount,
-            paymentIntentId // Pass the payment intent ID
-        );
+      setLoading(true);
+      
+      // Get payment method details from Stripe (you might need to fetch this)
+      // For now, using placeholder values - you should get these from the Stripe element
+      const paymentResult = await paymentService.savePaymentMethod({
+        userId: user!.id,
+        stripePaymentMethodId: paymentMethodId,
+        brand: "card", // Get this from Stripe element in real implementation
+        last4: "4242", // Get this from Stripe element in real implementation
+        expMonth: 12,
+        expYear: 2025,
+      });
 
-        if (response.success && response.auction && response.bidId) {
-            onBidPlaced(response.auction);
-            // Redirect to post-bid page after successful payment and bid placement
-            window.location.href = `/post-bid/${response.bidId}?current_price=${pendingBidAmount}`;
-        } else {
-            setError(response.error || "Failed to place bid after payment");
-        }
+      if (!paymentResult.success) {
+        setError("Failed to save payment method");
+        return;
+      }
+
+      // Place the bid with the setup intent ID and payment method ID
+      const response = await auctionService.placeBid(
+        auction.id,
+        user!.id,
+        pendingBidAmount,
+        setupIntentId,
+        paymentResult.paymentMethod.id
+      );
+
+      if (response.success && response.auction && response.bidId) {
+        onBidPlaced(response.auction);
+        window.location.href = `/post-bid/${response.bidId}?current_price=${pendingBidAmount}`;
+      } else {
+        setError(response.error || "Failed to place bid after payment setup");
+      }
     } catch (err) {
-        setError("An unexpected error occurred after payment");
+      setError("An unexpected error occurred after payment setup");
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-};
+  };
 
   if (!user) {
     return (
@@ -171,11 +190,13 @@ const handlePaymentSuccess = async (paymentIntentId: string) => {
           <Button
             type="submit"
             className="w-full"
-            disabled={loading}>
-            {loading ? (
+            disabled={loading || redirecting}>
+            {loading || redirecting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Placing Bid...
+                {redirecting
+                  ? "Redirecting..."
+                  : "Placing Bid..."}
               </>
             ) : (
               <>
