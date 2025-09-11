@@ -227,7 +227,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                   layout: "tabs",
                   defaultValues: {
                     billingDetails: {
-                      name: user.name || "",
+                      name: user.display_name || "",
                       email: user.email || "",
                     }
                   }
