@@ -100,21 +100,21 @@ function PaymentFormInner({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {message && (
-        <Alert>
-          <AlertDescription>{message}</AlertDescription>
+        <Alert className="py-2">
+          <AlertDescription className="text-sm">{message}</AlertDescription>
         </Alert>
       )}
 
       {/* Order Summary */}
-      <div className="p-3 bg-muted/30 rounded-lg">
-        <h3 className="font-semibold mb-2 text-sm">Bid Security Authorization</h3>
+      <div className="p-3 bg-muted/20 rounded-lg text-sm">
+        <h3 className="font-semibold mb-1">Bid Security Authorization</h3>
         <div className="space-y-1">
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between">
             <span>Bid Amount</span>
             <span className="font-medium">${amount}</span>
           </div>
-          <Separator />
-          <div className="flex justify-between text-sm font-semibold">
+          <Separator className="my-1" />
+          <div className="flex justify-between font-semibold">
             <span>Authorization Hold</span>
             <span>$0.00</span>
           </div>
@@ -126,7 +126,7 @@ function PaymentFormInner({
 
       {/* Payment Element */}
       {clientSecret && (
-        <div className="space-y-3">
+        <div className="space-y-2">
           <PaymentElement
             options={{
               layout: "tabs",
@@ -215,51 +215,47 @@ export function PaymentModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md lg:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="flex items-center gap-2 text-lg">
             <Shield className="h-5 w-5 text-primary" />
-            Secure Payment Method Setup
+            Secure Payment Setup
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm">
             We need to securely store your payment method for this bid
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Security Assurance */}
-          <Alert>
+          <Alert className="py-2">
             <Info className="h-4 w-4" />
-            <AlertDescription>
+            <AlertDescription className="text-sm">
               Your card will only be charged if you win the auction. This is a secure authorization to ensure serious bids only.
             </AlertDescription>
           </Alert>
 
           {/* Demo Information */}
           {process.env.NODE_ENV === "development" && (
-            <Card className="bg-amber-50 border-amber-200">
-              <CardContent className="pt-4">
-                <h4 className="font-medium text-amber-800 mb-2 flex items-center gap-2">
-                  <Info className="h-4 w-4" />
-                  Demo Credentials
-                </h4>
-                <p className="text-xs text-amber-700">
-                  Use card: <strong>4242 4242 4242 4242</strong>
-                  <br />
-                  Any future expiry date, any CVC
-                  <br />
-                  Any ZIP code
-                </p>
-              </CardContent>
+            <Card className="bg-amber-50 border-amber-200 p-3">
+              <h4 className="font-medium text-amber-800 mb-1 flex items-center gap-2 text-sm">
+                <Info className="h-3 w-3" />
+                Demo Credentials
+              </h4>
+              <p className="text-xs text-amber-700">
+                Use card: <strong>4242 4242 4242 4242</strong>
+                <br />
+                Any future expiry date, any CVC, any ZIP code
+              </p>
             </Card>
           )}
 
           {/* Payment Form */}
-          <Card>
-            <CardContent className="pt-6">
+          <Card className="border-0 shadow-none">
+            <CardContent className="p-0">
               {loading ? (
-                <div className="flex justify-center items-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div className="flex justify-center items-center py-6">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 </div>
               ) : clientSecret ? (
                 <Elements stripe={stripePromise} options={options}>
@@ -277,7 +273,7 @@ export function PaymentModal({
           </Card>
 
           {/* Additional Security Info */}
-          <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
+          <div className="flex justify-center gap-4 text-xs text-muted-foreground pt-1">
             <div className="flex items-center gap-1">
               <Shield className="h-3 w-3" />
               <span>PCI Compliant</span>
