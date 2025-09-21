@@ -13,12 +13,41 @@ import {
     Target,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { LeasingModal } from "@/components/lease/leasing-modal";
 
 export default function LeaseHomePage() {
     const [leasingModalOpen, setLeasingModalOpen] = useState(false);
     const [videoPlaying, setVideoPlaying] = useState(false);
+    const [videoError, setVideoError] = useState(false);
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    // Your Supabase video URL
+    const videoUrl = "https://oedkzwoxhvitsbarbnck.supabase.co/storage/v1/object/public/funnels/riverside_earlwhite__%20sep%2018,%202025%20001_earlwhite_wolverine.mp4";
+
+    const thumbnailUrl = "/thumbnail.png"; // Assuming it's in your public folder
+
+    const handlePlayVideo = () => {
+        setVideoPlaying(true);
+        setVideoError(false);
+        
+        // Give React a moment to update the DOM before trying to play
+        setTimeout(() => {
+            if (videoRef.current) {
+                videoRef.current.play().catch(error => {
+                    console.error("Video play failed:", error);
+                    setVideoError(true);
+                    setVideoPlaying(false);
+                });
+            }
+        }, 100);
+    };
+
+    const handleVideoError = () => {
+        setVideoError(true);
+        setVideoPlaying(false);
+    };
+
 
     return (
         <div className="min-h-screen">
@@ -42,18 +71,17 @@ export default function LeaseHomePage() {
                             {/* VSL Player */}
                             <div className="my-10 mx-auto max-w-3xl">
                                 <div className="aspect-video bg-black rounded-lg overflow-hidden shadow-xl relative">
-                                    {!videoPlaying ? (
+                                    {!videoPlaying || videoError ? (
                                         <>
                                             {/* Video thumbnail with play button */}
                                             <div
                                                 className="absolute inset-0 bg-cover bg-center cursor-pointer flex items-center justify-center"
                                                 style={{
-                                                    backgroundImage:
-                                                        "url('/thumbnail.png')",
+                                                    backgroundImage: `url('${thumbnailUrl}')`,
+                                                    backgroundSize: 'cover',
+                                                    backgroundPosition: 'center'
                                                 }}
-                                                onClick={() =>
-                                                    setVideoPlaying(true)
-                                                }>
+                                                onClick={handlePlayVideo}>
                                                 <div className="w-20 h-20 rounded-full bg-primary/80 hover:bg-primary flex items-center justify-center transition-all">
                                                     <svg
                                                         className="w-10 h-10 text-white ml-1"
@@ -72,14 +100,15 @@ export default function LeaseHomePage() {
                                             <div className="absolute inset-0 bg-black/30"></div>
                                         </>
                                     ) : (
-                                        /* Embedded video player */
+                                        /* Embedded video player with Supabase URL */
                                         <video
+                                            ref={videoRef}
                                             className="w-full h-full"
                                             controls
                                             autoPlay
-                                            poster="/thumbnail.png">
+                                            onError={handleVideoError}>
                                             <source
-                                                src="/vsl.mp4"
+                                                src={videoUrl}
                                                 type="video/mp4"
                                             />
                                             Your browser does not support the
@@ -88,9 +117,19 @@ export default function LeaseHomePage() {
                                     )}
                                 </div>
                                 <p className="text-sm text-muted-foreground mt-2">
-                                    Watch this 2-minute video to see how Wealth
-                                    Oven leasing works
+                                    Watch this video to see how Wealth Oven leasing works
                                 </p>
+                                {videoError && (
+                                    <p className="text-sm text-destructive mt-2">
+                                        Video failed to load.{" "}
+                                        <button 
+                                            className="underline"
+                                            onClick={handlePlayVideo}
+                                        >
+                                            Try again
+                                        </button>
+                                    </p>
+                                )}
                             </div>
 
                             <div className="flex flex-col sm:flex-row gap-4 justify-center">
