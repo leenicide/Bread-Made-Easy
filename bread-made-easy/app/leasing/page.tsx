@@ -13,41 +13,57 @@ import {
     Target,
 } from "lucide-react";
 import Link from "next/link";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { LeasingModal } from "@/components/lease/leasing-modal";
 
 export default function LeaseHomePage() {
     const [leasingModalOpen, setLeasingModalOpen] = useState(false);
     const [videoPlaying, setVideoPlaying] = useState(false);
     const [videoError, setVideoError] = useState(false);
-    const videoRef = useRef<HTMLVideoElement>(null);
+    const [videoStatus, setVideoStatus] = useState('idle');
+    const videoRef = useRef(null);
 
     // Your Supabase video URL
     const videoUrl = "https://oedkzwoxhvitsbarbnck.supabase.co/storage/v1/object/public/funnels/riverside_earlwhite__%20sep%2018,%202025%20001_earlwhite_wolverine.mp4";
+    const thumbnailUrl = "/thumbnail.png";
 
-    const thumbnailUrl = "/thumbnail.png"; // Assuming it's in your public folder
-
-    const handlePlayVideo = () => {
+    const handlePlayVideo = async () => {
+        console.log('handlePlayVideo called!');
         setVideoPlaying(true);
         setVideoError(false);
+        setVideoStatus('attempting to play');
         
-        // Give React a moment to update the DOM before trying to play
-        setTimeout(() => {
-            if (videoRef.current) {
-                videoRef.current.play().catch(error => {
-                    console.error("Video play failed:", error);
-                    setVideoError(true);
-                    setVideoPlaying(false);
-                });
+        if (videoRef.current) {
+            try {
+                // Load the video first
+                videoRef.current.load();
+                
+                // Wait for video to be ready
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Try to play
+                const playPromise = videoRef.current.play();
+                if (playPromise !== undefined) {
+                    await playPromise;
+                    console.log('Video play succeeded');
+                }
+            } catch (error) {
+                console.error('Video play failed:', error);
+                setVideoError(true);
+                setVideoPlaying(false);
+                setVideoStatus('play failed');
             }
-        }, 100);
+        } else {
+            console.error('Video ref is null!');
+        }
     };
 
     const handleVideoError = () => {
+        console.error('Video error handler called');
         setVideoError(true);
         setVideoPlaying(false);
+        setVideoStatus('error');
     };
-
 
     return (
         <div className="min-h-screen">
@@ -68,23 +84,40 @@ export default function LeaseHomePage() {
                                 risk. We only profit when you do.
                             </p>
 
-                            {/* VSL Player */}
+                            {/* VSL Player - Updated with better click handling */}
                             <div className="my-10 mx-auto max-w-3xl">
                                 <div className="aspect-video bg-black rounded-lg overflow-hidden shadow-xl relative">
                                     {!videoPlaying || videoError ? (
                                         <>
-                                            {/* Video thumbnail with play button */}
+                                            {/* Video thumbnail with play button - Fixed click handling */}
                                             <div
-                                                className="absolute inset-0 bg-cover bg-center cursor-pointer flex items-center justify-center"
+                                                className="absolute inset-0 cursor-pointer flex items-center justify-center z-20"
                                                 style={{
                                                     backgroundImage: `url('${thumbnailUrl}')`,
                                                     backgroundSize: 'cover',
-                                                    backgroundPosition: 'center'
+                                                    backgroundPosition: 'center',
+                                                    backgroundColor: '#1f2937' // Fallback gray color
                                                 }}
-                                                onClick={handlePlayVideo}>
-                                                <div className="w-20 h-20 rounded-full bg-primary/80 hover:bg-primary flex items-center justify-center transition-all">
+                                                onClick={(e) => {
+                                                    console.log('Thumbnail area clicked!', e);
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handlePlayVideo();
+                                                }}
+                                                onMouseDown={(e) => console.log('Mouse down on thumbnail')}
+                                            >
+                                                {/* Play button */}
+                                                <div 
+                                                    className="w-20 h-20 rounded-full bg-primary/90 hover:bg-primary flex items-center justify-center transition-all duration-200 shadow-lg"
+                                                    onClick={(e) => {
+                                                        console.log('Play button clicked directly!', e);
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        handlePlayVideo();
+                                                    }}
+                                                >
                                                     <svg
-                                                        className="w-10 h-10 text-white ml-1"
+                                                        className="w-10 h-10 text-white ml-1 pointer-events-none"
                                                         viewBox="0 0 24 24"
                                                         fill="none"
                                                         xmlns="http://www.w3.org/2000/svg">
@@ -96,39 +129,70 @@ export default function LeaseHomePage() {
                                                 </div>
                                             </div>
 
-                                            {/* Overlay */}
-                                            <div className="absolute inset-0 bg-black/30"></div>
+                                            {/* Removed the overlay that was blocking clicks */}
                                         </>
-                                    ) : (
-                                        /* Embedded video player with Supabase URL */
-                                        <video
-                                            ref={videoRef}
-                                            className="w-full h-full"
-                                            controls
-                                            autoPlay
-                                            onError={handleVideoError}>
-                                            <source
-                                                src={videoUrl}
-                                                type="video/mp4"
-                                            />
-                                            Your browser does not support the
-                                            video tag.
-                                        </video>
-                                    )}
+                                    ) : null}
+                                    
+                                    {/* Video element - improved with better attributes */}
+                                    <video
+                                        ref={videoRef}
+                                        className={`w-full h-full ${videoPlaying && !videoError ? 'block' : 'hidden'}`}
+                                        controls
+                                        onError={handleVideoError}
+                                        preload="metadata"
+                                        crossOrigin="anonymous"
+                                        playsInline
+                                        controlsList="nodownload"
+                                    >
+                                        <source
+                                            src={videoUrl}
+                                            type="video/mp4"
+                                        />
+                                        Your browser does not support the video tag.
+                                    </video>
                                 </div>
+                                
                                 <p className="text-sm text-muted-foreground mt-2">
                                     Watch this video to see how Wealth Oven leasing works
                                 </p>
+                                
+                                {/* Enhanced error handling */}
                                 {videoError && (
-                                    <p className="text-sm text-destructive mt-2">
-                                        Video failed to load.{" "}
-                                        <button 
-                                            className="underline"
-                                            onClick={handlePlayVideo}
-                                        >
-                                            Try again
-                                        </button>
-                                    </p>
+                                    <div className="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                                        <p className="text-sm text-destructive font-medium">
+                                            Video failed to load. Status: {videoStatus}
+                                        </p>
+                                        <div className="mt-2 space-x-2">
+                                            <button 
+                                                className="text-destructive underline text-sm hover:no-underline"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    console.log('Retry button clicked');
+                                                    setVideoError(false);
+                                                    setVideoPlaying(false);
+                                                    handlePlayVideo();
+                                                }}
+                                            >
+                                                Try again
+                                            </button>
+                                            <span className="text-destructive/60">•</span>
+                                            <a 
+                                                href={videoUrl} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="text-destructive underline text-sm hover:no-underline"
+                                            >
+                                                Open in new tab
+                                            </a>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {/* Debug info - remove this in production */}
+                                {process.env.NODE_ENV === 'development' && (
+                                    <div className="mt-2 text-xs text-muted-foreground">
+                                        Debug: {videoStatus} | Playing: {videoPlaying ? 'Yes' : 'No'} | Error: {videoError ? 'Yes' : 'No'}
+                                    </div>
                                 )}
                             </div>
 
