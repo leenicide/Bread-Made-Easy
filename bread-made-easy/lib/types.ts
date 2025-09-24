@@ -127,6 +127,39 @@ export interface CustomRequest {
   updated_at: Date
 }
 
+export interface LeaseRequest {
+  id: string
+  name: string
+  email: string
+  company?: string
+  phone?: string
+  project_type: string
+  industry: string
+  target_audience?: string
+  primary_goal: string
+  pages: string[]
+  features: string[]
+  integrations: string[]
+  inspiration?: string
+  additional_notes?: string
+  preferred_contact: string
+  lease_type: "performance_based" | "fixed_rate" | "revenue_share"
+  estimated_revenue?: number
+  status:
+    | "pending"
+    | "under_review"
+    | "approved"
+    | "active"
+    | "completed"
+    | "rejected"
+    | "cancelled"
+  assigned_team_member?: string
+  quarter: string
+  submitted_at: Date
+  created_at: Date
+  updated_at: Date
+}
+
 export interface Lead {
   id: string
   email: string

@@ -1,51 +1,77 @@
-import { Header } from "@/components/header"
-import { RequestTracker } from "@/components/custom-request/request-tracker"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Gavel, ShoppingBag, MessageSquare, Download, TrendingUp } from "lucide-react"
-import Link from "next/link"
-import { RecentActivity } from "@/components/recent-activity"
-import { QuickStats } from "@/components/quick-stats"
+import { Header } from "@/components/header";
+import { RequestTracker } from "@/components/custom-request/request-tracker";
+import { LeasingTracker } from "@/components/lease/leasing-request-tracker";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+    Gavel,
+    ShoppingBag,
+    MessageSquare,
+    Download,
+    TrendingUp,
+    Shield, 
+    Zap
+} from "lucide-react";
+import Link from "next/link";
+import { RecentActivity } from "@/components/recent-activity";
+import { QuickStats } from "@/components/quick-stats";
 
 function DashboardContent() {
+    return (
+        <div className="min-h-screen">
+            <Header />
+            <main className="container mx-auto py-8 px-4">
+                <div className="max-w-6xl mx-auto space-y-8">
+                    <div>
+                        <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
+                        <p className="text-muted-foreground">
+                            Manage your purchases, bids, and custom requests
+                        </p>
+                    </div>
 
-  return (
-    <div className="min-h-screen">
-      <Header />
-      <main className="container mx-auto py-8 px-4">
-        <div className="max-w-6xl mx-auto space-y-8">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
-            <p className="text-muted-foreground">Manage your purchases, bids, and custom requests</p>
-          </div>
+                    {/* Quick Stats */}
+                    <QuickStats />
 
-          {/* Quick Stats */}
-          <QuickStats />
+                    <div className="grid gap-8 lg:grid-cols-2">
+                        <RecentActivity limit={5} />
 
-          <div className="grid gap-8 lg:grid-cols-2">
-            <RecentActivity limit={5} />
+                        {/* Quick Actions */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Quick Actions</CardTitle>
+                                <CardDescription>
+                                    Jump to common tasks
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid gap-3">
+                                    <Button
+                                        asChild
+                                        variant="outline"
+                                        className="justify-start h-auto p-4 bg-transparent">
+                                        <Link href="/auctions">
+                                            <Gavel className="h-5 w-5 mr-3" />
 
-            {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-                <CardDescription>Jump to common tasks</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-3">
-                <Button asChild variant="outline" className="justify-start h-auto p-4 bg-transparent">
-                    <Link href="/auctions">
-                      <Gavel className="h-5 w-5 mr-3" />
-               
-                      <div className="text-left">
-                        <div className="font-medium">Browse Auctions</div>
-                        <div className="text-xs text-muted-foreground">Find and bid on exclusive funnels</div>
-                      </div>
-                    </Link>
-                  </Button>
+                                            <div className="text-left">
+                                                <div className="font-medium">
+                                                    Browse Auctions
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    Find and bid on exclusive
+                                                    funnels
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    </Button>
 
-                  {/* <Button asChild variant="outline" className="justify-start h-auto p-4 bg-transparent">
+                                    {/* <Button asChild variant="outline" className="justify-start h-auto p-4 bg-transparent">
                     <Link href="/buy-now">
                       <ShoppingBag className="h-5 w-5 mr-3" />
                       <div className="text-left">
@@ -55,49 +81,91 @@ function DashboardContent() {
                     </Link>
                   </Button> */}
 
-                  <Button asChild variant="outline" className="justify-start h-auto p-4 bg-transparent">
-                    <Link href="/custom-request">
-                      <MessageSquare className="h-5 w-5 mr-3" />
-                      <div className="text-left">
-                        <div className="font-medium">Custom Request</div>
-                        <div className="text-xs text-muted-foreground">Get a funnel built just for you</div>
-                      </div>
-                    </Link>
-                  </Button>
+                                    <Button
+                                        asChild
+                                        variant="outline"
+                                        className="justify-start h-auto p-4 bg-transparent">
+                                        <Link href="/custom-request">
+                                            <MessageSquare className="h-5 w-5 mr-3" />
+                                            <div className="text-left">
+                                                <div className="font-medium">
+                                                    Custom Request
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    Get a funnel built just for
+                                                    you
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    </Button>
 
-                  <Button asChild variant="outline" className="justify-start h-auto p-4 bg-transparent">
-                    <Link href="/downloads">
-                      <Download className="h-5 w-5 mr-3" />
-                      <div className="text-left">
-                        <div className="font-medium">My Downloads</div>
-                        <div className="text-xs text-muted-foreground">Access your purchased funnels</div>
-                      </div>
-                    </Link>
-                  </Button>
+                                    <Button
+                                        asChild
+                                        variant="outline"
+                                        className="justify-start h-auto p-4 bg-transparent">
+                                        <Link href="/downloads">
+                                            <Download className="h-5 w-5 mr-3" />
+                                            <div className="text-left">
+                                                <div className="font-medium">
+                                                    My Downloads
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    Access your purchased
+                                                    funnels
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    <div>
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                                <Shield className="h-6 w-6 text-primary" />
+                                <h2 className="text-2xl font-bold">
+                                    Lease Requests
+                                </h2>
+                                <Badge
+                                    variant="outline"
+                                    className="bg-primary/10 text-primary">
+                                    <Zap className="h-3 w-3 mr-1" />
+                                    New Program
+                                </Badge>
+                            </div>
+                            <Button asChild>
+                                <Link href="/leasing">
+                                    <Shield className="h-4 w-4 mr-2" />
+                                    New Lease Request
+                                </Link>
+                            </Button>
+                        </div>
+                        <LeasingTracker userId={"dashboard"} />
+                    </div>
+
+                    {/* Custom Requests Section */}
+                    <div>
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold">
+                                Custom Requests
+                            </h2>
+                            <Button asChild>
+                                <Link href="/custom-request">
+                                    <MessageSquare className="h-4 w-4 mr-2" />
+                                    New Request
+                                </Link>
+                            </Button>
+                        </div>
+                        <RequestTracker userId={"dashboard"} />
+                    </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Custom Requests Section */}
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">Custom Requests</h2>
-              <Button asChild>
-                <Link href="/custom-request">
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  New Request
-                </Link>
-              </Button>
-            </div>
-            <RequestTracker userId={"dashboard"} />
-          </div>
+            </main>
         </div>
-      </main>
-    </div>
-  )
+    );
 }
 
 export default function Dashboard() {
-  return <DashboardContent />
+    return <DashboardContent />;
 }
