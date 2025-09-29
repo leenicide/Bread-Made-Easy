@@ -1,7 +1,7 @@
 // components/custom-request/custom-request-modal.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,6 +46,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { customRequestService } from "@/lib/custom-service"; // Import the service
+import { supabase } from "@/lib/supabase-client";
 
 interface FormData {
     email: string;
@@ -161,6 +162,20 @@ export function CustomRequestModal({
     if (user && user.email && !formData.email) {
         setFormData((prev) => ({ ...prev, email: user.email }));
     }
+
+    // Prefill phone from auth user if available
+    useEffect(() => {
+        const fillPhone = async () => {
+            if (formData.phone) return;
+            const { data: { user: authUser } } = await supabase.auth.getUser();
+            const phoneCandidate = (authUser as any)?.phone || (authUser as any)?.user_metadata?.phone;
+            if (phoneCandidate) {
+                setFormData((prev) => ({ ...prev, phone: phoneCandidate }));
+            }
+        };
+        fillPhone();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.id]);
 
     const progress = (currentStep / steps.length) * 100;
 

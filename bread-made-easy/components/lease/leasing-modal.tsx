@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,6 +48,7 @@ DialogHeader,
 DialogTitle,
 } from "@/components/ui/dialog";
 import { leasingService } from "@/lib/leasing-service"; // Import the leasing service
+import { supabase } from "@/lib/supabase-client";
 
 interface FormData {
 email: string;
@@ -166,6 +167,19 @@ const [submitError, setSubmitError] = useState<string | null>(null);
 if (user && user.email && !formData.email) {
     setFormData((prev) => ({ ...prev, email: user.email }));
 }
+
+useEffect(() => {
+    const fillPhone = async () => {
+        if (formData.phone) return;
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        const phoneCandidate = (authUser as any)?.phone || (authUser as any)?.user_metadata?.phone;
+        if (phoneCandidate) {
+            setFormData((prev) => ({ ...prev, phone: phoneCandidate }));
+        }
+    };
+    fillPhone();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [user?.id]);
 
 const progress = (currentStep / steps.length) * 100;
 
@@ -399,6 +413,7 @@ const renderStep = () => {
                                     updateFormData("name", e.target.value)
                                 }
                                 placeholder="John Doe"
+                                onBlur={(e) => persistField('name', e.target.value)}
                             />
                             {errors.name && (
                                 <p className="text-sm text-destructive">
@@ -417,6 +432,7 @@ const renderStep = () => {
                                 updateFormData("company", e.target.value)
                             }
                             placeholder="Your Company Inc."
+                                onBlur={(e) => persistField('company', e.target.value)}
                         />
                     </div>
 
@@ -429,6 +445,7 @@ const renderStep = () => {
                                 updateFormData("phone", e.target.value)
                             }
                             placeholder="+1 (555) 123-4567"
+                                onBlur={(e) => persistField('phone', e.target.value)}
                         />
                     </div>
                 </div>
@@ -743,14 +760,14 @@ const renderStep = () => {
                         <Label>Preferred Contact Method</Label>
                         <RadioGroup
                             value={formData.preferredContact}
-                            onValueChange={(value) =>
+                            onValueChange={async (value) => {
                                 updateFormData("preferredContact", value)
-                            }>
+                                await persistField('preferredContact', value)
+                            }}>
                             <div className="flex items-center space-x-2">
                                 <RadioGroupItem
                                     value="email"
                                     id="email-contact"
-                                onBlur={(e) => persistField('name', e.target.value)}
                                 />
                                 <Label htmlFor="email-contact">Email</Label>
                             </div>
@@ -758,7 +775,6 @@ const renderStep = () => {
                                 <RadioGroupItem
                                     value="phone"
                                     id="phone-contact"
-                            onBlur={(e) => persistField('company', e.target.value)}
                             />
                                 <Label htmlFor="phone-contact">
                                     Phone Call
@@ -768,7 +784,6 @@ const renderStep = () => {
                                 <RadioGroupItem
                                     value="video"
                                     id="video-contact"
-                            onBlur={(e) => persistField('phone', e.target.value)}
                             />
                                 <Label htmlFor="video-contact">
                                     Video Call
