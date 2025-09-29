@@ -38,6 +38,66 @@ export const customRequestService = {
     return data as CustomRequest;
   },
 
+  // Update arbitrary fields on a custom request by id
+  async updateCustomRequest(id: string, updates: Partial<CustomRequest>): Promise<CustomRequest> {
+    const { data, error } = await supabase
+      .from('custom_requests')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error updating custom request fields:', error)
+      throw new Error(`Failed to update custom request: ${error.message}`)
+    }
+
+    return data as CustomRequest
+  },
+
+  // Create a draft from step 1 inputs by filling placeholders for NOT NULL fields
+  async createDraftFromStep1(params: {
+    name?: string
+    email: string
+    company?: string | null
+    phone?: string | null
+  }): Promise<CustomRequest> {
+    const { data, error } = await supabase
+      .from('custom_requests')
+      .insert({
+        name: params.name || 'Anonymous',
+        email: params.email,
+        company: params.company ?? null,
+        phone: params.phone ?? null,
+        // Required NOT NULL fields with placeholders for draft
+        projecttype: 'TBD',
+        industry: 'TBD',
+        primarygoal: 'TBD',
+        pages: [],
+        features: [],
+        timeline: null,
+        budget: null,
+        inspiration: null,
+        additionalnotes: null,
+        preferredcontact: 'email',
+        status: 'pending',
+        submitted_at: new Date().toISOString(),
+        quarter: getCurrentQuarter(),
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating draft custom request:', error)
+      throw new Error(`Failed to create draft custom request: ${error.message}`)
+    }
+
+    return data as CustomRequest
+  },
+
   // Get all custom requests (for admin)
   async getCustomRequests(userId: string): Promise<CustomRequest[]> {
     const { data, error } = await supabase

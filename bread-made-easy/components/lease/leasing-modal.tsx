@@ -169,10 +169,43 @@ if (user && user.email && !formData.email) {
 
 const progress = (currentStep / steps.length) * 100;
 
+const [draftId, setDraftId] = useState<string | null>(null);
+
 const updateFormData = (field: keyof FormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
         setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+};
+
+const persistField = async (field: keyof FormData, value: any) => {
+    try {
+        if (!draftId) {
+            const email = field === 'email' ? value : formData.email;
+            if (email) {
+                const draft = await leasingService.createDraftFromStep1({
+                    email,
+                    name: field === 'name' ? value : formData.name,
+                    company: field === 'company' ? (value || null) : (formData.company || null),
+                    phone: field === 'phone' ? (value || null) : (formData.phone || null),
+                });
+                setDraftId(draft.id);
+                return;
+            }
+        }
+        if (draftId) {
+            const partial: any = {};
+            if (field === 'email') partial.email = value;
+            if (field === 'name') partial.name = value || (user?.display_name || 'Anonymous');
+            if (field === 'company') partial.company = value || null;
+            if (field === 'phone') partial.phone = value || null;
+            if (field === 'preferredContact') partial.preferred_contact = value || 'email';
+            if (Object.keys(partial).length > 0) {
+                await leasingService.updateLeaseRequest(draftId, partial);
+            }
+        }
+    } catch (e) {
+        console.error('Persist lease field failed', e);
     }
 };
 
@@ -215,10 +248,51 @@ const validateStep = (step: number): boolean => {
     return Object.keys(newErrors).length === 0;
 };
 
-const nextStep = () => {
-    if (validateStep(currentStep)) {
-        setCurrentStep((prev) => Math.min(prev + 1, steps.length));
+const nextStep = async () => {
+    if (!validateStep(currentStep)) return;
+    try {
+        if (!draftId && formData.email) {
+            const draft = await leasingService.createDraftFromStep1({
+                email: formData.email,
+                name: formData.name,
+                company: formData.company || null,
+                phone: formData.phone || null,
+            });
+            setDraftId(draft.id);
+        } else if (draftId) {
+            const updates: any = {};
+            if (currentStep === 1) {
+                updates.name = formData.name || (user?.display_name || 'Anonymous');
+                updates.email = formData.email;
+                updates.company = formData.company || null;
+                updates.phone = formData.phone || null;
+            }
+            if (currentStep === 2) {
+                updates.project_type = formData.projectType || 'TBD';
+                updates.industry = formData.industry || 'TBD';
+                updates.primary_goal = formData.primaryGoal || 'TBD';
+                updates.target_audience = formData.targetAudience || null;
+            }
+            if (currentStep === 3) {
+                updates.pages = formData.pages;
+                updates.features = formData.features;
+                updates.integrations = formData.integrations;
+            }
+            if (currentStep === 4) {
+                updates.lease_type = formData.leaseType;
+                updates.estimated_revenue = formData.estimatedRevenue ?? null;
+                updates.inspiration = formData.inspiration || null;
+                updates.additional_notes = formData.additionalNotes || null;
+                updates.preferred_contact = formData.preferredContact || 'email';
+            }
+            if (Object.keys(updates).length > 0) {
+                await leasingService.updateLeaseRequest(draftId, updates);
+            }
+        }
+    } catch (e) {
+        console.error('Failed to persist lease step', e);
     }
+    setCurrentStep((prev) => Math.min(prev + 1, steps.length));
 };
 
 const prevStep = () => {
@@ -257,7 +331,11 @@ const handleSubmit = async () => {
             submitted_at: new Date()
         };
 
-        await leasingService.createLeaseRequest(requestData);
+        if (draftId) {
+            await leasingService.updateLeaseRequest(draftId, requestData as any);
+        } else {
+            await leasingService.createLeaseRequest(requestData as any);
+        }
         setSubmitted(true);
     } catch (error) {
         console.error("Failed to submit lease request:", error);
@@ -302,6 +380,7 @@ const renderStep = () => {
                             }
                             placeholder="john@company.com"
                             disabled={!!user}
+                            onBlur={(e) => persistField('email', e.target.value)}
                         />
                         {errors.email && (
                             <p className="text-sm text-destructive">
@@ -671,6 +750,7 @@ const renderStep = () => {
                                 <RadioGroupItem
                                     value="email"
                                     id="email-contact"
+                                onBlur={(e) => persistField('name', e.target.value)}
                                 />
                                 <Label htmlFor="email-contact">Email</Label>
                             </div>
@@ -678,7 +758,8 @@ const renderStep = () => {
                                 <RadioGroupItem
                                     value="phone"
                                     id="phone-contact"
-                                />
+                            onBlur={(e) => persistField('company', e.target.value)}
+                            />
                                 <Label htmlFor="phone-contact">
                                     Phone Call
                                 </Label>
@@ -687,7 +768,8 @@ const renderStep = () => {
                                 <RadioGroupItem
                                     value="video"
                                     id="video-contact"
-                                />
+                            onBlur={(e) => persistField('phone', e.target.value)}
+                            />
                                 <Label htmlFor="video-contact">
                                     Video Call
                                 </Label>

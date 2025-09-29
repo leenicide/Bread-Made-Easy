@@ -40,6 +40,63 @@ export const leasingService = {
     return data as LeaseRequest
   },
 
+  async updateLeaseRequest(id: string, updates: Partial<LeaseRequest>): Promise<LeaseRequest> {
+    const { data, error } = await supabase
+      .from("lease_requests")
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Error updating lease request fields:", error)
+      throw new Error(`Failed to update lease request: ${error.message}`)
+    }
+
+    return data as LeaseRequest
+  },
+
+  async createDraftFromStep1(params: {
+    name?: string
+    email: string
+    company?: string | null
+    phone?: string | null
+  }): Promise<LeaseRequest> {
+    const { data, error } = await supabase
+      .from("lease_requests")
+      .insert({
+        name: params.name || "Anonymous",
+        email: params.email,
+        company: params.company ?? null,
+        phone: params.phone ?? null,
+        // placeholders for NOT NULL fields
+        project_type: "TBD",
+        industry: "TBD",
+        primary_goal: "TBD",
+        pages: [],
+        features: [],
+        integrations: [],
+        preferred_contact: "email",
+        lease_type: "performance_based",
+        estimated_revenue: null,
+        status: "pending",
+        submitted_at: new Date().toISOString(),
+        quarter: getCurrentQuarter(),
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Error creating draft lease request:", error)
+      throw new Error(`Failed to create draft lease request: ${error.message}`)
+    }
+
+    return data as LeaseRequest
+  },
+
   async getLeaseRequests(): Promise<LeaseRequest[]> {
     const { data, error } = await supabase
       .from("lease_requests")

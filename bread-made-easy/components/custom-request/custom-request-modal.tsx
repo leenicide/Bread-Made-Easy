@@ -155,6 +155,7 @@ export function CustomRequestModal({
     const [loading, setLoading] = useState(false);
     const [submitted, setSubmitted] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
+  const [draftId, setDraftId] = useState<string | null>(null);
 
     // Prefill email if user is logged in
     if (user && user.email && !formData.email) {
@@ -163,10 +164,43 @@ export function CustomRequestModal({
 
     const progress = (currentStep / steps.length) * 100;
 
-    const updateFormData = (field: keyof FormData, value: any) => {
+    const updateFormData = async (field: keyof FormData, value: any) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
         if (errors[field]) {
             setErrors((prev) => ({ ...prev, [field]: "" }));
+        }
+        // No autosave here; saving occurs onBlur or on step change
+    };
+
+    const persistField = async (field: keyof FormData, value: any) => {
+        try {
+            if (!draftId) {
+                // Create draft only when we have email (step 1) and on blur
+                const email = field === 'email' ? value : formData.email;
+                if (email) {
+                    const draft = await customRequestService.createDraftFromStep1({
+                        email,
+                        name: field === 'name' ? value : formData.name,
+                        company: field === 'company' ? (value || null) : (formData.company || null),
+                        phone: field === 'phone' ? (value || null) : (formData.phone || null),
+                    });
+                    setDraftId(draft.id);
+                    return;
+                }
+            }
+            if (draftId) {
+                const partial: any = {};
+                if (field === 'email') partial.email = value;
+                if (field === 'name') partial.name = value || (user?.display_name || 'Anonymous');
+                if (field === 'company') partial.company = value || null;
+                if (field === 'phone') partial.phone = value || null;
+                if (field === 'preferredContact') partial.preferredcontact = value || 'email';
+                if (Object.keys(partial).length > 0) {
+                    await customRequestService.updateCustomRequest(draftId, partial);
+                }
+            }
+        } catch (e) {
+            console.error('Persist field failed', e);
         }
     };
 
@@ -208,10 +242,51 @@ export function CustomRequestModal({
         return Object.keys(newErrors).length === 0;
     };
 
-    const nextStep = () => {
-        if (validateStep(currentStep)) {
-            setCurrentStep((prev) => Math.min(prev + 1, steps.length));
+    const nextStep = async () => {
+        if (!validateStep(currentStep)) return;
+        // Persist step data
+        try {
+            if (!draftId && formData.email) {
+                const draft = await customRequestService.createDraftFromStep1({
+                    email: formData.email,
+                    name: formData.name,
+                    company: formData.company || null,
+                    phone: formData.phone || null,
+                });
+                setDraftId(draft.id);
+            } else if (draftId) {
+                const updates: any = {};
+                if (currentStep === 1) {
+                    updates.name = formData.name || (user?.display_name || 'Anonymous');
+                    updates.email = formData.email;
+                    updates.company = formData.company || null;
+                    updates.phone = formData.phone || null;
+                }
+                if (currentStep === 2) {
+                    updates.projecttype = formData.projectType || 'TBD';
+                    updates.industry = formData.industry || 'TBD';
+                    updates.primarygoal = formData.primaryGoal || 'TBD';
+                    updates.targetaudience = formData.targetAudience || null;
+                }
+                if (currentStep === 3) {
+                    updates.pages = formData.pages;
+                    updates.features = formData.features;
+                    updates.timeline = formData.timeline || null;
+                    updates.budget = formData.budget || null;
+                }
+                if (currentStep === 4) {
+                    updates.inspiration = formData.inspiration || null;
+                    updates.additionalnotes = formData.additionalNotes || null;
+                    updates.preferredcontact = formData.preferredContact || 'email';
+                }
+                if (Object.keys(updates).length > 0) {
+                    await customRequestService.updateCustomRequest(draftId, updates);
+                }
+            }
+        } catch (e) {
+            console.error('Failed to persist step', e);
         }
+        setCurrentStep((prev) => Math.min(prev + 1, steps.length));
     };
 
     const prevStep = () => {
@@ -244,8 +319,12 @@ export function CustomRequestModal({
                 preferredcontact: formData.preferredContact
             };
 
-            // Save to database
-            await customRequestService.createCustomRequest(requestData);
+            // If draft exists, update it; otherwise create a final record
+            if (draftId) {
+                await customRequestService.updateCustomRequest(draftId, requestData as any);
+            } else {
+                await customRequestService.createCustomRequest(requestData as any);
+            }
             
             setSubmitted(true);
         } catch (error) {
@@ -264,6 +343,7 @@ export function CustomRequestModal({
             setFormData(initialFormData);
             setSubmitted(false);
             setSubmitError(null);
+            setDraftId(null);
         }, 300);
     };
 
@@ -283,6 +363,7 @@ export function CustomRequestModal({
                                 }
                                 placeholder="john@company.com"
                                 disabled={!!user}
+                                onBlur={(e) => persistField('email', e.target.value)}
                             />
                             {errors.email && (
                                 <p className="text-sm text-destructive">
@@ -301,6 +382,7 @@ export function CustomRequestModal({
                                         updateFormData("name", e.target.value)
                                     }
                                     placeholder="John Doe"
+                                    onBlur={(e) => persistField('name', e.target.value)}
                                 />
                                 {errors.name && (
                                     <p className="text-sm text-destructive">
@@ -319,6 +401,7 @@ export function CustomRequestModal({
                                     updateFormData("company", e.target.value)
                                 }
                                 placeholder="Your Company Inc."
+                                onBlur={(e) => persistField('company', e.target.value)}
                             />
                         </div>
 
@@ -331,6 +414,7 @@ export function CustomRequestModal({
                                     updateFormData("phone", e.target.value)
                                 }
                                 placeholder="+1 (555) 123-4567"
+                                onBlur={(e) => persistField('phone', e.target.value)}
                             />
                         </div>
                     </div>
