@@ -20,49 +20,50 @@ export default function LeaseHomePage() {
     const [leasingModalOpen, setLeasingModalOpen] = useState(false);
     const [videoPlaying, setVideoPlaying] = useState(false);
     const [videoError, setVideoError] = useState(false);
-    const [videoStatus, setVideoStatus] = useState('idle');
-    const videoRef = useRef(null);
+    const [videoStatus, setVideoStatus] = useState("idle");
+    const videoRef = useRef<HTMLVideoElement>(null);
 
     // Your Supabase video URL
-    const videoUrl = "https://oedkzwoxhvitsbarbnck.supabase.co/storage/v1/object/public/funnels/riverside_earlwhite__%20sep%2018,%202025%20001_earlwhite_wolverine.mp4";
+    const videoUrl =
+        "https://oedkzwoxhvitsbarbnck.supabase.co/storage/v1/object/public/funnels/riverside_earlwhite__%20sep%2018,%202025%20001_earlwhite_wolverine.mp4";
     const thumbnailUrl = "/thumbnail.png";
 
     const handlePlayVideo = async () => {
-        console.log('handlePlayVideo called!');
+        console.log("handlePlayVideo called!");
         setVideoPlaying(true);
         setVideoError(false);
-        setVideoStatus('attempting to play');
-        
+        setVideoStatus("attempting to play");
+
         if (videoRef.current) {
             try {
                 // Load the video first
                 videoRef.current.load();
-                
+
                 // Wait for video to be ready
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+
                 // Try to play
                 const playPromise = videoRef.current.play();
                 if (playPromise !== undefined) {
                     await playPromise;
-                    console.log('Video play succeeded');
+                    console.log("Video play succeeded");
                 }
             } catch (error) {
-                console.error('Video play failed:', error);
+                console.error("Video play failed:", error);
                 setVideoError(true);
                 setVideoPlaying(false);
-                setVideoStatus('play failed');
+                setVideoStatus("play failed");
             }
         } else {
-            console.error('Video ref is null!');
+            console.error("Video ref is null!");
         }
     };
 
     const handleVideoError = () => {
-        console.error('Video error handler called');
+        console.error("Video error handler called");
         setVideoError(true);
         setVideoPlaying(false);
-        setVideoStatus('error');
+        setVideoStatus("error");
     };
 
     return (
@@ -75,13 +76,11 @@ export default function LeaseHomePage() {
                         {/* Headline */}
                         <div className="max-w-3xl mx-auto mb-2">
                             <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                                Start a Done-for-You Business System Without No
-                                Upfront Cost
+                                🚀 Wealth Oven Leases
                             </h1>
                             <p className="text-xl text-muted-foreground mb-4 leading-relaxed">
-                                Lease a Wealth Oven today: a complete,
-                                ready-to-run business system. No upfront fee. No
-                                risk. We only profit when you do.
+                                A Done-for-You Business System With $0 Upfront
+                                Cost
                             </p>
 
                             {/* VSL Player - Updated with better click handling */}
@@ -94,28 +93,37 @@ export default function LeaseHomePage() {
                                                 className="absolute inset-0 cursor-pointer flex items-center justify-center z-20"
                                                 style={{
                                                     backgroundImage: `url('${thumbnailUrl}')`,
-                                                    backgroundSize: 'cover',
-                                                    backgroundPosition: 'center',
-                                                    backgroundColor: '#1f2937' // Fallback gray color
+                                                    backgroundSize: "cover",
+                                                    backgroundPosition:
+                                                        "center",
+                                                    backgroundColor: "#1f2937", // Fallback gray color
                                                 }}
                                                 onClick={(e) => {
-                                                    console.log('Thumbnail area clicked!', e);
+                                                    console.log(
+                                                        "Thumbnail area clicked!",
+                                                        e
+                                                    );
                                                     e.preventDefault();
                                                     e.stopPropagation();
                                                     handlePlayVideo();
                                                 }}
-                                                onMouseDown={(e) => console.log('Mouse down on thumbnail')}
-                                            >
+                                                onMouseDown={(e) =>
+                                                    console.log(
+                                                        "Mouse down on thumbnail"
+                                                    )
+                                                }>
                                                 {/* Play button */}
-                                                <div 
+                                                <div
                                                     className="w-20 h-20 rounded-full bg-primary/90 hover:bg-primary flex items-center justify-center transition-all duration-200 shadow-lg"
                                                     onClick={(e) => {
-                                                        console.log('Play button clicked directly!', e);
+                                                        console.log(
+                                                            "Play button clicked directly!",
+                                                            e
+                                                        );
                                                         e.preventDefault();
                                                         e.stopPropagation();
                                                         handlePlayVideo();
-                                                    }}
-                                                >
+                                                    }}>
                                                     <svg
                                                         className="w-10 h-10 text-white ml-1 pointer-events-none"
                                                         viewBox="0 0 24 24"
@@ -132,66 +140,76 @@ export default function LeaseHomePage() {
                                             {/* Removed the overlay that was blocking clicks */}
                                         </>
                                     ) : null}
-                                    
+
                                     {/* Video element - improved with better attributes */}
                                     <video
                                         ref={videoRef}
-                                        className={`w-full h-full ${videoPlaying && !videoError ? 'block' : 'hidden'}`}
+                                        className={`w-full h-full ${
+                                            videoPlaying && !videoError
+                                                ? "block"
+                                                : "hidden"
+                                        }`}
                                         controls
                                         onError={handleVideoError}
                                         preload="metadata"
                                         crossOrigin="anonymous"
                                         playsInline
-                                        controlsList="nodownload"
-                                    >
+                                        controlsList="nodownload">
                                         <source
                                             src={videoUrl}
                                             type="video/mp4"
                                         />
-                                        Your browser does not support the video tag.
+                                        Your browser does not support the video
+                                        tag.
                                     </video>
                                 </div>
-                                
+
                                 <p className="text-sm text-muted-foreground mt-2">
-                                    Watch this video to see how Wealth Oven leasing works
+                                    Watch this video to see how Wealth Oven
+                                    leasing works
                                 </p>
-                                
+
                                 {/* Enhanced error handling */}
                                 {videoError && (
                                     <div className="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
                                         <p className="text-sm text-destructive font-medium">
-                                            Video failed to load. Status: {videoStatus}
+                                            Video failed to load. Status:{" "}
+                                            {videoStatus}
                                         </p>
                                         <div className="mt-2 space-x-2">
-                                            <button 
+                                            <button
                                                 className="text-destructive underline text-sm hover:no-underline"
                                                 onClick={(e) => {
                                                     e.preventDefault();
-                                                    console.log('Retry button clicked');
+                                                    console.log(
+                                                        "Retry button clicked"
+                                                    );
                                                     setVideoError(false);
                                                     setVideoPlaying(false);
                                                     handlePlayVideo();
-                                                }}
-                                            >
+                                                }}>
                                                 Try again
                                             </button>
-                                            <span className="text-destructive/60">•</span>
-                                            <a 
-                                                href={videoUrl} 
-                                                target="_blank" 
+                                            <span className="text-destructive/60">
+                                                •
+                                            </span>
+                                            <a
+                                                href={videoUrl}
+                                                target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="text-destructive underline text-sm hover:no-underline"
-                                            >
+                                                className="text-destructive underline text-sm hover:no-underline">
                                                 Open in new tab
                                             </a>
                                         </div>
                                     </div>
                                 )}
-                                
+
                                 {/* Debug info - remove this in production */}
-                                {process.env.NODE_ENV === 'development' && (
+                                {process.env.NODE_ENV === "development" && (
                                     <div className="mt-2 text-xs text-muted-foreground">
-                                        Debug: {videoStatus} | Playing: {videoPlaying ? 'Yes' : 'No'} | Error: {videoError ? 'Yes' : 'No'}
+                                        Debug: {videoStatus} | Playing:{" "}
+                                        {videoPlaying ? "Yes" : "No"} | Error:{" "}
+                                        {videoError ? "Yes" : "No"}
                                     </div>
                                 )}
                             </div>
@@ -201,80 +219,60 @@ export default function LeaseHomePage() {
                                     size="lg"
                                     className="text-lg px-8"
                                     onClick={() => setLeasingModalOpen(true)}>
-                                    Lease Your Wealth Oven Now{" "}
+                                    Start Your Lease Today{" "}
                                     <ArrowRight className="ml-2 h-5 w-5" />
+                                </Button>
+                                <Button
+                                    size="lg"
+                                    variant="outline"
+                                    className="text-lg px-8"
+                                    asChild>
+                                    <Link href="/strategy-call">
+                                        Book a Free Strategy Call
+                                    </Link>
                                 </Button>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                {/* Problem Section */}
-                <section className="py-6 px-4 bg-muted/30">
+                {/* What Is Wealth Oven Section */}
+                <section className="pt-2 pb-16 px-4 bg-muted/30">
                     <div className="container max-w-6xl mx-auto">
                         <div className="max-w-4xl mx-auto text-center">
                             <h2 className="text-3xl font-bold mb-8">
-                                Most Businesses Burn Out Before They Even Start
+                                What Is a Wealth Oven?
                             </h2>
-                            <div className="grid md:grid-cols-3 gap-6 mt-12">
-                                {[
-                                    {
-                                        title: "Wasted Resources",
-                                        desc: "Months building websites, funnels, and ads that flop",
-                                    },
-                                    {
-                                        title: "Costly Experiments",
-                                        desc: "Thousands sunk into 'experiments' that never pay back",
-                                    },
-                                    {
-                                        title: "No System",
-                                        desc: "No way to consistently turn traffic into customers",
-                                    },
-                                ].map((item, index) => (
-                                    <div
-                                        key={index}
-                                        className="p-6 rounded-lg border bg-background">
-                                        <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center mb-4 mx-auto">
-                                            <Target className="h-6 w-6 text-destructive" />
-                                        </div>
-                                        <h3 className="font-semibold text-lg mb-2">
-                                            {item.title}
-                                        </h3>
-                                        <p className="text-muted-foreground text-center text-sm">
-                                            {item.desc}
-                                        </p>
-                                    </div>
-                                ))}
-                            </div>
+                            <p className="text-lg text-muted-foreground mb-6">
+                                A Wealth Oven is a ready-to-run digital business
+                                system. It's designed to take in leads and
+                                consistently bake them into paying customers —
+                                just like an oven takes dough and bakes bread.
+                            </p>
+                            <p className="text-lg text-muted-foreground">
+                                Instead of wasting months (and thousands of
+                                dollars) building, testing, and fixing funnels,
+                                you can lease one instantly, risk-free.
+                            </p>
                         </div>
                     </div>
                 </section>
 
-                {/* Solution Section */}
+                {/* What You Get Section */}
                 <section className="py-16 px-4">
                     <div className="container max-w-6xl mx-auto">
-                        <div className="max-w-4xl mx-auto text-center">
-                            <h2 className="text-3xl font-bold mb-8">
-                                Introducing Wealth Oven Leases — Zero Upfront
+                        <div className="max-w-4xl mx-auto">
+                            <h2 className="text-3xl font-bold mb-12 text-center">
+                                What You Get With a Wealth Oven Lease
                             </h2>
-                            <p className="text-lg text-muted-foreground mb-10">
-                                We build complete business systems (Wealth
-                                Ovens) you can use instantly. Instead of paying
-                                thousands upfront, you lease it at no cost — and
-                                we share in the revenue only if it works.
-                            </p>
 
-                            <div className="grid md:grid-cols-2 gap-8 text-left mt-12">
+                            <div className="grid md:grid-cols-2 gap-8">
                                 <div className="space-y-6">
-                                    <h3 className="text-2xl font-semibold mb-6">
-                                        With leasing, you get:
-                                    </h3>
-
                                     {[
-                                        "$0 Upfront → No big investment to test.",
-                                        "Performance-Based → You only share profit if the system works.",
-                                        "Ready-to-Run → Built, tested, and optimized before you touch it.",
-                                        "Buyout Option → Own it forever (18 months avg. revenue or $10k).",
+                                        "$0 Upfront Setup – We build, test, and optimize the entire system for you at no charge.",
+                                        "Proven System – Every Wealth Oven is built using the same strategies we use to generate revenue in real markets.",
+                                        "Plug & Play Setup – Just plug in your product or service — everything else is ready to run.",
+                                        "Automated Conversions – Opt-in pages, sales pages, checkout, upsells, and follow-up emails are all included.",
                                     ].map((item, index) => (
                                         <div
                                             key={index}
@@ -287,22 +285,34 @@ export default function LeaseHomePage() {
                                     ))}
                                 </div>
 
-                                <div className="bg-primary/5 p-8 rounded-lg border border-primary/10">
-                                    <h3 className="text-2xl font-semibold mb-6 text-primary">
-                                        Risk-Free Advantage
-                                    </h3>
-                                    <p className="text-muted-foreground mb-4">
-                                        Unlike traditional business investments
-                                        where you risk thousands upfront, our
-                                        lease model ensures you only pay when
-                                        the system is already generating profit
-                                        for you.
-                                    </p>
-                                    <div className="flex items-center mt-6">
-                                        <Shield className="h-8 w-8 text-primary mr-3" />
-                                        <span className="font-semibold">
-                                            Your capital stays protected
-                                        </span>
+                                <div className="space-y-6">
+                                    {[
+                                        "Ad Management Support – Our ads team can run your traffic so you don't need to worry about targeting, testing, or scaling.",
+                                        "Risk-Free Model – You only pay us when the Wealth Oven makes money.",
+                                    ].map((item, index) => (
+                                        <div
+                                            key={index}
+                                            className="flex items-start">
+                                            <CheckCircle className="h-6 w-6 text-primary mr-3 mt-1 flex-shrink-0" />
+                                            <p className="text-muted-foreground">
+                                                {item}
+                                            </p>
+                                        </div>
+                                    ))}
+
+                                    <div className="bg-primary/5 p-6 rounded-lg border border-primary/10 mt-6">
+                                        <h3 className="font-semibold text-lg mb-3 text-primary">
+                                            The Buyout Option
+                                        </h3>
+                                        <p className="text-muted-foreground text-sm">
+                                            Love your Wealth Oven and want to
+                                            keep it forever? You can buy it
+                                            outright for 18 months of average
+                                            profit OR $10,000 (whichever is
+                                            higher). Until then, you lease with
+                                            no upfront fee and unlimited earning
+                                            potential.
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -314,35 +324,38 @@ export default function LeaseHomePage() {
                 <section className="py-16 px-4 bg-muted/30">
                     <div className="container max-w-6xl mx-auto">
                         <div className="max-w-4xl mx-auto text-center">
-                            <h2 className="text-3xl font-bold mb-8">
-                                How It Works (3 Simple Steps)
+                            <h2 className="text-3xl font-bold mb-12">
+                                How It Works
                             </h2>
 
-                            <div className="grid md:grid-cols-3 gap-6 mt-12">
+                            <div className="grid md:grid-cols-4 gap-6 mt-8">
                                 {[
                                     {
-                                        icon: Zap,
-                                        title: "Pick a Wealth Oven",
-                                        desc: "Choose from available systems in our marketplace",
+                                        title: "Pick Your Wealth Oven",
+                                        desc: "Choose from available business systems in our marketplace",
                                     },
                                     {
-                                        icon: TrendingUp,
                                         title: "Plug In Your Offer",
-                                        desc: "We adapt it to your product or service",
+                                        desc: "We tailor the system to your product or service",
                                     },
                                     {
-                                        icon: DollarSign,
                                         title: "Run Ads",
-                                        desc: "You cover ad spend. If the Oven bakes profit, we share in the upside",
+                                        desc: "You cover ad spend, and we handle traffic",
+                                    },
+                                    {
+                                        title: "Bake the Bread",
+                                        desc: "System turns cold leads into hot customers",
                                     },
                                 ].map((item, index) => (
                                     <div
                                         key={index}
                                         className="flex flex-col items-center p-6 rounded-lg border bg-background">
                                         <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                                            <item.icon className="h-6 w-6 text-primary" />
+                                            <div className="font-bold text-primary">
+                                                {index + 1}
+                                            </div>
                                         </div>
-                                        <h3 className="font-semibold text-lg mb-2">
+                                        <h3 className="font-semibold text-lg mb-2 text-center">
                                             {item.title}
                                         </h3>
                                         <p className="text-muted-foreground text-center text-sm">
@@ -351,48 +364,176 @@ export default function LeaseHomePage() {
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                    </div>
-                </section>
 
-                {/* Guarantee Section */}
-                <section className="py-16 px-4">
-                    <div className="container max-w-6xl mx-auto">
-                        <div className="max-w-4xl mx-auto text-center">
-                            <div className="bg-success/10 p-8 rounded-lg border border-success/20">
-                                <h2 className="text-3xl font-bold mb-6">
-                                    Risk-Free Guarantee
-                                </h2>
-                                <p className="text-lg text-muted-foreground mb-4">
-                                    If it doesn't make money, you don't owe us a
-                                    cent.
-                                </p>
-                                <p className="text-muted-foreground">
-                                    That's the power of $0 upfront leasing —
-                                    you're not gambling with your savings.
+                            <div className="mt-12 p-8 bg-success/10 rounded-lg border border-success/20">
+                                <h3 className="text-2xl font-bold mb-4 text-success">
+                                    Revenue Share Model
+                                </h3>
+                                <p className="text-lg text-muted-foreground">
+                                    You keep the majority of the profit. We take
+                                    a fair percentage only when you make money.
                                 </p>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                {/* CTA Section */}
+                {/* Why Lease vs Build Section */}
+                <section className="py-16 px-4">
+                    <div className="container max-w-6xl mx-auto">
+                        <div className="max-w-4xl mx-auto text-center">
+                            <h2 className="text-3xl font-bold mb-12">
+                                Why Lease Instead of Build?
+                            </h2>
+
+                            <div className="grid md:grid-cols-3 gap-8">
+                                {[
+                                    {
+                                        title: "Building from scratch",
+                                        price: "$7,000+",
+                                        desc: "(custom builds)",
+                                        type: "expensive",
+                                    },
+                                    {
+                                        title: "Hiring an agency",
+                                        price: "$10,000–$20,000+",
+                                        desc: "",
+                                        type: "expensive",
+                                    },
+                                    {
+                                        title: "Leasing a Wealth Oven",
+                                        price: "$0 upfront",
+                                        desc: "+ revenue share only if it works",
+                                        type: "affordable",
+                                    },
+                                ].map((item, index) => (
+                                    <div
+                                        key={index}
+                                        className={`p-6 rounded-lg border ${
+                                            item.type === "affordable"
+                                                ? "bg-primary/5 border-primary/20 shadow-lg"
+                                                : "bg-background"
+                                        }`}>
+                                        <h3 className="font-semibold text-lg mb-3">
+                                            {item.title}
+                                        </h3>
+                                        <div
+                                            className={`text-2xl font-bold mb-2 ${
+                                                item.type === "affordable"
+                                                    ? "text-primary"
+                                                    : "text-foreground"
+                                            }`}>
+                                            {item.price}
+                                        </div>
+                                        <p className="text-muted-foreground text-sm">
+                                            {item.desc}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <p className="text-lg text-muted-foreground mt-8">
+                                You get all the benefits of a world-class
+                                business system without risking your savings.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Who It's For Section */}
+                <section className="py-16 px-4 bg-muted/30">
+                    <div className="container max-w-6xl mx-auto">
+                        <div className="max-w-4xl mx-auto text-center">
+                            <h2 className="text-3xl font-bold mb-12">
+                                Who It's For
+                            </h2>
+
+                            <div className="grid md:grid-cols-2 gap-6 text-left">
+                                <div className="space-y-4">
+                                    {[
+                                        "Entrepreneurs testing new offers",
+                                        "Coaches, consultants, and service providers ready to scale",
+                                        "Small businesses who want a proven system without the upfront price tag",
+                                    ].map((item, index) => (
+                                        <div
+                                            key={index}
+                                            className="flex items-start">
+                                            <CheckCircle className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
+                                            <p>{item}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="space-y-4">
+                                    {[
+                                        "Anyone tired of wasting money on funnels that don't convert",
+                                        "Business owners who want to focus on their craft, not tech setup",
+                                        "Marketers who want proven systems instead of constant testing",
+                                    ].map((item, index) => (
+                                        <div
+                                            key={index}
+                                            className="flex items-start">
+                                            <CheckCircle className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
+                                            <p>{item}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Final CTA Section */}
                 <section className="py-20 px-4 bg-primary/5">
                     <div className="container max-w-4xl mx-auto text-center">
                         <h2 className="text-3xl md:text-4xl font-bold mb-6">
-                            Test a Wealth Oven Today — Zero Risk
+                            Ready to Test a Wealth Oven?
                         </h2>
-                        <p className="text-xl text-muted-foreground mb-8">
-                            Join the growing number of entrepreneurs who are
-                            building profitable businesses without upfront
-                            costs.
-                        </p>
+
+                        <div className="bg-background p-8 rounded-lg border shadow-sm mb-8">
+                            <div className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4">
+                                <div className="text-center flex-1">
+                                    <div className="font-bold text-lg mb-2">
+                                        You bring the dough
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">
+                                        (leads and ad spend)
+                                    </p>
+                                </div>
+
+                                <div className="flex justify-center rotate-90 md:rotate-0">
+                                    <ArrowRight className="h-8 w-8 text-primary" />
+                                </div>
+
+                                <div className="text-center flex-1">
+                                    <div className="font-bold text-lg mb-2">
+                                        We bring the oven
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">
+                                        (the system)
+                                    </p>
+                                </div>
+
+                                <div className="flex justify-center rotate-90 md:rotate-0">
+                                    <ArrowRight className="h-8 w-8 text-primary" />
+                                </div>
+
+                                <div className="text-center flex-1">
+                                    <div className="font-bold text-lg mb-2">
+                                        Together we bake the bread
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">
+                                        (sales and profit)
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
                             <Button
                                 size="lg"
                                 className="text-lg px-8"
                                 onClick={() => setLeasingModalOpen(true)}>
-                                Start Leasing Now{" "}
+                                Start Your Lease Today{" "}
                                 <ArrowRight className="ml-2 h-5 w-5" />
                             </Button>
                             <Button
@@ -400,7 +541,9 @@ export default function LeaseHomePage() {
                                 variant="outline"
                                 className="text-lg px-8"
                                 asChild>
-                                <Link href="/how-it-works">Learn More</Link>
+                                <Link href="/strategy-call">
+                                    Book a Free Strategy Call
+                                </Link>
                             </Button>
                         </div>
                     </div>
