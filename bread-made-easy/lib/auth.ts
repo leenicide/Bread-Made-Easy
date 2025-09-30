@@ -42,6 +42,7 @@ export const ROLE_PERMISSIONS = {
     canEditOwnProfile: true,
   },
   [ROLES.ADMIN]: {
+    canViewAllLeaseRequests: true,
     canViewAuctions: true,
     canPlaceBids: true,
     canMakePurchases: true,

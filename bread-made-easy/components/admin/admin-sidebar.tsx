@@ -64,6 +64,12 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
       icon: FileText,
       permission: "canViewAllCustomRequests"
     },
+     {
+      name: "Lease Request",
+      href: "/admin/lease-request",
+      icon: FileText,
+      permission: "canViewAllLeaseRequests"
+    },
     {
       name: "Purchases",
       href: "/admin/purchases",
