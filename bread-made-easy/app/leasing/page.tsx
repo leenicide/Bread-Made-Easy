@@ -18,6 +18,8 @@ import { useState, useRef, useEffect } from "react";
 import { LeasingModal } from "@/components/lease/leasing-modal";
 import { funnelService } from "@/lib/funnel-service";
 import type { Funnel } from "@/lib/types";
+import { StrategyCallModal } from "@/components/strategy-call-modal";
+
 
 export default function LeaseHomePage() {
     const [leasingModalOpen, setLeasingModalOpen] = useState(false);
@@ -27,6 +29,8 @@ export default function LeaseHomePage() {
     const [availableFunnels, setAvailableFunnels] = useState<Funnel[]>([]);
     const [loadingFunnels, setLoadingFunnels] = useState(true);
     const videoRef = useRef<HTMLVideoElement>(null);
+    const [strategyCallModalOpen, setStrategyCallModalOpen] = useState(false);
+
 
     // Your Supabase video URL
     const videoUrl =
@@ -236,15 +240,14 @@ export default function LeaseHomePage() {
                                     Start Your Lease Today{" "}
                                     <ArrowRight className="ml-2 h-5 w-5" />
                                 </Button>
-                                <Button
-                                    size="lg"
-                                    variant="outline"
-                                    className="text-lg px-8"
-                                    asChild>
-                                    <Link href="/strategy-call">
-                                        Book a Free Strategy Call
-                                    </Link>
-                                </Button>
+                              <Button
+  size="lg"
+  variant="outline"
+  className="text-lg px-8"
+  onClick={() => setStrategyCallModalOpen(true)}
+>
+  Book a Free Strategy Call
+</Button>
                             </div>
                         </div>
                     </div>
@@ -504,6 +507,10 @@ export default function LeaseHomePage() {
                 open={leasingModalOpen}
                 onOpenChange={setLeasingModalOpen}
             />
+            <StrategyCallModal
+  open={strategyCallModalOpen}
+  onOpenChange={setStrategyCallModalOpen}
+/>
         </div>
     );
 }
