@@ -55,6 +55,7 @@ export const ROLE_PERMISSIONS = {
     canEditAllAuctions: true,
     canViewAllPurchases: true,
     canViewAllFunnels: true,
+    canViewAllStrategyCalls: true,
     canViewAllLeads: true,
     canViewAllCustomRequests: true,
     canManageCategories: true,

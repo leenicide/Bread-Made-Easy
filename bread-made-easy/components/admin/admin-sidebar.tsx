@@ -13,11 +13,15 @@ import {
   DollarSign, 
   Settings,
   LogOut,
-  User as UserIcon, // ← Rename the icon import
-  Shield
+  User as UserIcon,
+  Shield,
+  GanttChart,
+  Phone,
+  ShoppingCart,
+  BarChart3
 } from "lucide-react"
 import { authService } from "@/lib/auth"
-import type { User } from "@/lib/types" // ← This stays as User type
+import type { User } from "@/lib/types"
 import Image from "next/image"
 
 interface AdminSidebarProps {
@@ -40,10 +44,10 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
       icon: Gavel,
       permission: "canViewAllAuctions"
     },
-     {
+    {
       name: "Funnels",
       href: "/admin/funnels",
-      icon: Gavel,
+      icon: GanttChart,
       permission: "canViewAllFunnels"
     },
     {
@@ -55,7 +59,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
     {
       name: "Leads",
       href: "/admin/leads",
-      icon: FileText,
+      icon: Users,
       permission: "canViewAllLeads"
     },
     {
@@ -64,10 +68,10 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
       icon: FileText,
       permission: "canViewAllCustomRequests"
     },
-     {
-      name: "Lease Request",
+    {
+      name: "Lease Requests",
       href: "/admin/lease-request",
-      icon: FileText,
+      icon: ShoppingCart,
       permission: "canViewAllLeaseRequests"
     },
     {
@@ -76,10 +80,16 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
       icon: DollarSign,
       permission: "canViewAllPurchases"
     },
+    {
+      name: "Strategy Calls",
+      href: "/admin/strategy-call",
+      icon: Phone,
+      permission: "canViewAllStrategyCalls"
+    },
     // {
     //   name: "Analytics",
     //   href: "/admin/analytics",
-    //   icon: LayoutDashboard,
+    //   icon: BarChart3,
     //   permission: "canViewAnalytics"
     // },
     {
@@ -116,7 +126,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
         <div className="bg-gray-50 rounded-lg p-4 mb-6">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-              <UserIcon className="w-5 h-5 text-gray-600" /> {/* ← Use the renamed icon */}
+              <UserIcon className="w-5 h-5 text-gray-600" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">
@@ -129,7 +139,6 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
                 >
                   {user.role === 'admin' ? 'Administrator' : 'User'}
                 </Badge>
-  
               </div>
             </div>
           </div>
@@ -138,7 +147,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
         {/* Navigation */}
         <nav className="space-y-2">
           {filteredNavigation.map((item) => {
-            const isActive = pathname === item.href
+            const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
             return (
               <Link
                 key={item.name}
