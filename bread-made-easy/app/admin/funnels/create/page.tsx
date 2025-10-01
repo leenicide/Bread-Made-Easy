@@ -27,6 +27,8 @@ export default function CreateFunnel() {
   const [newCategoryName, setNewCategoryName] = useState("")
   const [showNewCategory, setShowNewCategory] = useState(false)
   const [loadingCategories, setLoadingCategories] = useState(true)
+  const [isAvailableForLease, setIsAvailableForLease] = useState(false)
+
 
   useEffect(() => {
     // Redirect if not admin
@@ -112,7 +114,9 @@ export default function CreateFunnel() {
         title: funnelName,
         description: funnelDescription,
         image_url: imageUrl || undefined, // Convert null to undefined
-        category_id: selectedCategoryId || undefined
+        category_id: selectedCategoryId || undefined,
+        is_available_for_lease: isAvailableForLease
+
       }
 
       const newFunnel = await funnelService.createFunnel(funnelData)
@@ -235,8 +239,27 @@ export default function CreateFunnel() {
                   </>
                 )}
               </div>
+              {/* Add Lease Availability Toggle */}
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="lease-available"
+                    checked={isAvailableForLease}
+                    onChange={(e) => setIsAvailableForLease(e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="lease-available" className="text-sm font-medium">
+                    Available for Lease
+                  </Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  When enabled, this funnel can be leased by users through lease requests
+                </p>
+              </div>
             </CardContent>
           </Card>
+          
 
           {/* Image Upload */}
           <Card>

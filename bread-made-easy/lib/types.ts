@@ -30,6 +30,8 @@ export interface Funnel {
   category_id?: string
   description?: string
   category?: Category | null
+  is_available_for_lease?: boolean
+
 
   image_url: string | null
   active: boolean

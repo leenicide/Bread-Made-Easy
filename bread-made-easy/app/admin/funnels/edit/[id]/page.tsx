@@ -33,6 +33,8 @@ export default function EditFunnel() {
     const [newCategoryName, setNewCategoryName] = useState("")
     const [showNewCategory, setShowNewCategory] = useState(false)
     const [loadingCategories, setLoadingCategories] = useState(true)
+    const [isAvailableForLease, setIsAvailableForLease] = useState(false)
+
 
     useEffect(() => {
         // Redirect if not admin
@@ -53,6 +55,8 @@ export default function EditFunnel() {
                 setFunnelDescription(funnelData.description || "")
                 setImagePreview(funnelData.image_url)
                 setSelectedCategoryId(funnelData.category_id || "")
+                setIsAvailableForLease(funnelData.is_available_for_lease || false)
+
             }
         } catch (error) {
             console.error("Error loading funnel:", error)
@@ -139,7 +143,9 @@ export default function EditFunnel() {
                 title: funnelName,
                 description: funnelDescription || undefined, // Convert empty string to undefined
                 image_url: imageUrl || undefined, // Convert null to undefined
-                category_id: selectedCategoryId || undefined // Convert empty string to undefined
+                category_id: selectedCategoryId || undefined, // Convert empty string to undefined
+                is_available_for_lease: isAvailableForLease
+
             }
 
             const updatedFunnel = await funnelService.updateFunnel(funnel.id, updates)
@@ -294,6 +300,24 @@ export default function EditFunnel() {
                                     </>
                                 )}
                             </div>
+                              {/* Add Lease Availability Toggle */}
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="lease-available"
+                    checked={isAvailableForLease}
+                    onChange={(e) => setIsAvailableForLease(e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="lease-available" className="text-sm font-medium">
+                    Available for Lease
+                  </Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  When enabled, this funnel can be leased by users through lease requests
+                </p>
+              </div>
 
                             <div className="space-y-2">
                                 <Label>Funnel ID</Label>

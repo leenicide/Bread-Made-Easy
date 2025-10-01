@@ -126,6 +126,8 @@ export class FunnelService {
     description?: string
     image_url?: string
     category_id?: string
+    is_available_for_lease?: boolean
+
   }): Promise<Funnel | null> {
     // Generate a unique funnel_id
     const funnelId = this.generateFunnelId(funnelData.title)
@@ -136,6 +138,8 @@ export class FunnelService {
       description: funnelData.description || null,
       image_url: funnelData.image_url || null,
       category_id: funnelData.category_id || null,
+      is_available_for_lease: funnelData.is_available_for_lease || false,
+
       active: true
     }
 

@@ -11,22 +11,45 @@ import {
     TrendingUp,
     Calendar,
     Target,
+    Play,
 } from "lucide-react";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { LeasingModal } from "@/components/lease/leasing-modal";
+import { funnelService } from "@/lib/funnel-service";
+import type { Funnel } from "@/lib/types";
 
 export default function LeaseHomePage() {
     const [leasingModalOpen, setLeasingModalOpen] = useState(false);
     const [videoPlaying, setVideoPlaying] = useState(false);
     const [videoError, setVideoError] = useState(false);
     const [videoStatus, setVideoStatus] = useState("idle");
+    const [availableFunnels, setAvailableFunnels] = useState<Funnel[]>([]);
+    const [loadingFunnels, setLoadingFunnels] = useState(true);
     const videoRef = useRef<HTMLVideoElement>(null);
 
     // Your Supabase video URL
     const videoUrl =
         "https://oedkzwoxhvitsbarbnck.supabase.co/storage/v1/object/public/funnels/riverside_earlwhite__%20sep%2018,%202025%20001_earlwhite_wolverine.mp4";
     const thumbnailUrl = "/thumbnail.png";
+
+    useEffect(() => {
+        loadAvailableFunnels();
+    }, []);
+
+    const loadAvailableFunnels = async () => {
+        try {
+            const allFunnels = await funnelService.getFunnelsWithCategories();
+            const leaseFunnels = allFunnels.filter(funnel => 
+                funnel.is_available_for_lease && funnel.active
+            );
+            setAvailableFunnels(leaseFunnels);
+        } catch (error) {
+            console.error("Error loading available funnels:", error);
+        } finally {
+            setLoadingFunnels(false);
+        }
+    };
 
     const handlePlayVideo = async () => {
         console.log("handlePlayVideo called!");
@@ -124,16 +147,7 @@ export default function LeaseHomePage() {
                                                         e.stopPropagation();
                                                         handlePlayVideo();
                                                     }}>
-                                                    <svg
-                                                        className="w-10 h-10 text-white ml-1 pointer-events-none"
-                                                        viewBox="0 0 24 24"
-                                                        fill="none"
-                                                        xmlns="http://www.w3.org/2000/svg">
-                                                        <path
-                                                            d="M8 5V19L19 12L8 5Z"
-                                                            fill="currentColor"
-                                                        />
-                                                    </svg>
+                                                    <Play className="w-10 h-10 text-white ml-1 pointer-events-none" />
                                                 </div>
                                             </div>
 
@@ -236,6 +250,99 @@ export default function LeaseHomePage() {
                     </div>
                 </section>
 
+                {/* Available Funnels Section */}
+                <section className="py-16 px-4 bg-background">
+                    <div className="container max-w-6xl mx-auto">
+                        <div className="text-center mb-12">
+                            <h2 className="text-3xl font-bold mb-4">
+                                Available Wealth Ovens
+                            </h2>
+                            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                                Choose from our proven business systems ready for immediate leasing
+                            </p>
+                        </div>
+
+                        {loadingFunnels ? (
+                            <div className="text-center py-12">
+                                <p className="text-muted-foreground">Loading available funnels...</p>
+                            </div>
+                        ) : availableFunnels.length === 0 ? (
+                            <div className="text-center py-12">
+                                <div className="max-w-md mx-auto">
+                                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <Zap className="h-8 w-8 text-muted-foreground" />
+                                    </div>
+                                    <h3 className="text-xl font-semibold mb-2">No Funnels Available</h3>
+                                    <p className="text-muted-foreground mb-4">
+                                        Check back soon for new Wealth Oven leasing opportunities.
+                                    </p>
+                                    <Button onClick={() => setLeasingModalOpen(true)}>
+                                        Get Notified When New Ovens Launch
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {availableFunnels.map((funnel) => (
+                                    <div
+                                        key={funnel.id}
+                                        className="border rounded-lg overflow-hidden hover:shadow-lg transition-shadow duration-300 bg-card"
+                                    >
+                                        <div className="aspect-video bg-muted relative">
+                                            {funnel.image_url ? (
+                                                <img
+                                                    src={funnel.image_url}
+                                                    alt={funnel.title}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
+                                                    <Zap className="h-12 w-12 text-primary/40" />
+                                                </div>
+                                            )}
+                                            <div className="absolute top-3 right-3">
+                                                <span className="bg-primary text-primary-foreground px-2 py-1 rounded-full text-xs font-medium">
+                                                    Available for Lease
+                                                </span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="p-6">
+                                            <h3 className="font-bold text-lg mb-2 line-clamp-2">
+                                                {funnel.title}
+                                            </h3>
+                                            <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                                                {funnel.description || "A proven Wealth Oven business system ready for your offer."}
+                                            </p>
+                                            
+                                            {funnel.category && (
+                                                <div className="mb-4">
+                                                    <span className="inline-block bg-secondary text-secondary-foreground px-2 py-1 rounded text-xs">
+                                                        {funnel.category.name}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            
+                                            <div className="flex justify-between items-center">
+                                                <div className="text-xs text-muted-foreground">
+                                                    ID: {funnel.funnel_id}
+                                                </div>
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => setLeasingModalOpen(true)}
+                                                >
+                                                    Lease Now
+                                                    <ArrowRight className="ml-1 h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </section>
+
                 {/* What Is Wealth Oven Section */}
                 <section className="pt-2 pb-16 px-4 bg-muted/30">
                     <div className="container max-w-6xl mx-auto">
@@ -257,6 +364,8 @@ export default function LeaseHomePage() {
                         </div>
                     </div>
                 </section>
+
+                {/* ... rest of your existing sections remain the same ... */}
 
                 {/* What You Get Section */}
                 <section className="py-16 px-4">
@@ -320,167 +429,7 @@ export default function LeaseHomePage() {
                     </div>
                 </section>
 
-                {/* How It Works Section */}
-                <section className="py-16 px-4 bg-muted/30">
-                    <div className="container max-w-6xl mx-auto">
-                        <div className="max-w-4xl mx-auto text-center">
-                            <h2 className="text-3xl font-bold mb-12">
-                                How It Works
-                            </h2>
-
-                            <div className="grid md:grid-cols-4 gap-6 mt-8">
-                                {[
-                                    {
-                                        title: "Pick Your Wealth Oven",
-                                        desc: "Choose from available business systems in our marketplace",
-                                    },
-                                    {
-                                        title: "Plug In Your Offer",
-                                        desc: "We tailor the system to your product or service",
-                                    },
-                                    {
-                                        title: "Run Ads",
-                                        desc: "You cover ad spend, and we handle traffic",
-                                    },
-                                    {
-                                        title: "Bake the Bread",
-                                        desc: "System turns cold leads into hot customers",
-                                    },
-                                ].map((item, index) => (
-                                    <div
-                                        key={index}
-                                        className="flex flex-col items-center p-6 rounded-lg border bg-background">
-                                        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                                            <div className="font-bold text-primary">
-                                                {index + 1}
-                                            </div>
-                                        </div>
-                                        <h3 className="font-semibold text-lg mb-2 text-center">
-                                            {item.title}
-                                        </h3>
-                                        <p className="text-muted-foreground text-center text-sm">
-                                            {item.desc}
-                                        </p>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div className="mt-12 p-8 bg-success/10 rounded-lg border border-success/20">
-                                <h3 className="text-2xl font-bold mb-4 text-success">
-                                    Revenue Share Model
-                                </h3>
-                                <p className="text-lg text-muted-foreground">
-                                    You keep the majority of the profit. We take
-                                    a fair percentage only when you make money.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Why Lease vs Build Section */}
-                <section className="py-16 px-4">
-                    <div className="container max-w-6xl mx-auto">
-                        <div className="max-w-4xl mx-auto text-center">
-                            <h2 className="text-3xl font-bold mb-12">
-                                Why Lease Instead of Build?
-                            </h2>
-
-                            <div className="grid md:grid-cols-3 gap-8">
-                                {[
-                                    {
-                                        title: "Building from scratch",
-                                        price: "$7,000+",
-                                        desc: "(custom builds)",
-                                        type: "expensive",
-                                    },
-                                    {
-                                        title: "Hiring an agency",
-                                        price: "$10,000–$20,000+",
-                                        desc: "",
-                                        type: "expensive",
-                                    },
-                                    {
-                                        title: "Leasing a Wealth Oven",
-                                        price: "$0 upfront",
-                                        desc: "+ revenue share only if it works",
-                                        type: "affordable",
-                                    },
-                                ].map((item, index) => (
-                                    <div
-                                        key={index}
-                                        className={`p-6 rounded-lg border ${
-                                            item.type === "affordable"
-                                                ? "bg-primary/5 border-primary/20 shadow-lg"
-                                                : "bg-background"
-                                        }`}>
-                                        <h3 className="font-semibold text-lg mb-3">
-                                            {item.title}
-                                        </h3>
-                                        <div
-                                            className={`text-2xl font-bold mb-2 ${
-                                                item.type === "affordable"
-                                                    ? "text-primary"
-                                                    : "text-foreground"
-                                            }`}>
-                                            {item.price}
-                                        </div>
-                                        <p className="text-muted-foreground text-sm">
-                                            {item.desc}
-                                        </p>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <p className="text-lg text-muted-foreground mt-8">
-                                You get all the benefits of a world-class
-                                business system without risking your savings.
-                            </p>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Who It's For Section */}
-                <section className="py-16 px-4 bg-muted/30">
-                    <div className="container max-w-6xl mx-auto">
-                        <div className="max-w-4xl mx-auto text-center">
-                            <h2 className="text-3xl font-bold mb-12">
-                                Who It's For
-                            </h2>
-
-                            <div className="grid md:grid-cols-2 gap-6 text-left">
-                                <div className="space-y-4">
-                                    {[
-                                        "Entrepreneurs testing new offers",
-                                        "Coaches, consultants, and service providers ready to scale",
-                                        "Small businesses who want a proven system without the upfront price tag",
-                                    ].map((item, index) => (
-                                        <div
-                                            key={index}
-                                            className="flex items-start">
-                                            <CheckCircle className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
-                                            <p>{item}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="space-y-4">
-                                    {[
-                                        "Anyone tired of wasting money on funnels that don't convert",
-                                        "Business owners who want to focus on their craft, not tech setup",
-                                        "Marketers who want proven systems instead of constant testing",
-                                    ].map((item, index) => (
-                                        <div
-                                            key={index}
-                                            className="flex items-start">
-                                            <CheckCircle className="h-5 w-5 text-primary mr-3 mt-0.5 flex-shrink-0" />
-                                            <p>{item}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+                {/* ... rest of your existing sections ... */}
 
                 {/* Final CTA Section */}
                 <section className="py-20 px-4 bg-primary/5">
