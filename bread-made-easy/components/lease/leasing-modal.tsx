@@ -369,12 +369,9 @@ const getCurrentQuarter = (): string => {
 
 const handleClose = () => {
     onOpenChange(false);
-    // Reset form after a delay to allow the modal to close smoothly
+    // Redirect to abandoned checkout page
     setTimeout(() => {
-        setCurrentStep(1);
-        setFormData(initialFormData);
-        setSubmitted(false);
-        setSubmitError(null);
+        window.location.href = '/abandoned-checkout';
     }, 300);
 };
 
@@ -822,16 +819,27 @@ const renderThankYou = () => (
 );
 
 return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={() => {}}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto [&>button]:hidden">
             <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-primary" />
-                    Wealth Oven Leasing Request
-                </DialogTitle>
-                <DialogDescription>
-                    Start with $0 upfront - we only profit when you do
-                </DialogDescription>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <DialogTitle className="flex items-center gap-2">
+                            <DollarSign className="h-5 w-5 text-primary" />
+                            Wealth Oven Leasing Request
+                        </DialogTitle>
+                        <DialogDescription>
+                            Start with $0 upfront - we only profit when you do
+                        </DialogDescription>
+                    </div>
+                    <Button 
+                        variant="outline" 
+                        onClick={handleClose}
+                        className="text-red-600 border-red-600 hover:bg-red-50"
+                    >
+                        Cancel
+                    </Button>
+                </div>
             </DialogHeader>
 
             {submitError && (
