@@ -91,13 +91,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
     //   href: "/admin/analytics",
     //   icon: BarChart3,
     //   permission: "canViewAnalytics"
-    // },
-    {
-      name: "Settings",
-      href: "/admin/settings",
-      icon: Settings,
-      permission: "canAccessAdminPanel"
-    },
+    //     },
   ]
 
   const handleLogout = async () => {
