@@ -80,7 +80,6 @@ export default function AbandonedCheckoutPage() {
             </CardHeader>
             <CardContent className="text-center">
               <div className="flex items-center justify-center gap-2 mb-6">
-                <DollarSign className="h-8 w-8" />
                 <span className="text-4xl font-bold">$250</span>
                 <span className="text-xl">off your first month</span>
               </div>
@@ -125,7 +124,7 @@ export default function AbandonedCheckoutPage() {
                 size="lg"
                 className="text-orange-600 border-orange-600 hover:bg-orange-50 text-lg px-8 py-4 h-auto"
               >
-                <Link href="/">
+                <Link href="/leasing">
                   Back to Home
                 </Link>
               </Button>
