@@ -6,20 +6,17 @@ import {
     ArrowRight,
     CheckCircle,
     Zap,
-    DollarSign,
-    Shield,
-    TrendingUp,
-    Calendar,
-    Target,
     Play,
+    Shield,
+    Users,
+    Target,
+    TrendingUp,
 } from "lucide-react";
-import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { LeasingModal } from "@/components/lease/leasing-modal";
 import { funnelService } from "@/lib/funnel-service";
 import type { Funnel } from "@/lib/types";
 import { StrategyCallModal } from "@/components/strategy-call-modal";
-
 
 export default function LeaseHomePage() {
     const [leasingModalOpen, setLeasingModalOpen] = useState(false);
@@ -30,7 +27,6 @@ export default function LeaseHomePage() {
     const [loadingFunnels, setLoadingFunnels] = useState(true);
     const videoRef = useRef<HTMLVideoElement>(null);
     const [strategyCallModalOpen, setStrategyCallModalOpen] = useState(false);
-
 
     // Your Supabase video URL
     const videoUrl =
@@ -98,163 +94,206 @@ export default function LeaseHomePage() {
             <Header />
             <main>
                 {/* Hero Section */}
-                <section className="py-20 px-4 bg-gradient-to-b from-background to-muted/30">
+                <section className="py-20 px-4">
                     <div className="container max-w-6xl mx-auto text-center">
-                        {/* Headline */}
-                        <div className="max-w-3xl mx-auto mb-2">
-                            <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                                🚀 Wealth Oven Leases
+                        <div className="max-w-3xl mx-auto mb-8">
+                            <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                                Wealth Oven Leases
                             </h1>
-                            <p className="text-xl text-muted-foreground mb-4 leading-relaxed">
-                                A Done-for-You Business System With $0 Upfront
-                                Cost
+                            <p className="text-2xl md:text-3xl text-muted-foreground mb-8 leading-relaxed font-medium">
+                                So you wanna make money online huh? Join the club!
                             </p>
-
-                            {/* VSL Player - Updated with better click handling */}
-                            <div className="my-10 mx-auto max-w-3xl">
-                                <div className="aspect-video bg-black rounded-lg overflow-hidden shadow-xl relative">
-                                    {!videoPlaying || videoError ? (
-                                        <>
-                                            {/* Video thumbnail with play button - Fixed click handling */}
-                                            <div
-                                                className="absolute inset-0 cursor-pointer flex items-center justify-center z-20"
-                                                style={{
-                                                    backgroundImage: `url('${thumbnailUrl}')`,
-                                                    backgroundSize: "cover",
-                                                    backgroundPosition:
-                                                        "center",
-                                                    backgroundColor: "#1f2937", // Fallback gray color
-                                                }}
-                                                onClick={(e) => {
-                                                    console.log(
-                                                        "Thumbnail area clicked!",
-                                                        e
-                                                    );
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    handlePlayVideo();
-                                                }}
-                                                onMouseDown={(e) =>
-                                                    console.log(
-                                                        "Mouse down on thumbnail"
-                                                    )
-                                                }>
-                                                {/* Play button */}
-                                                <div
-                                                    className="w-20 h-20 rounded-full bg-primary/90 hover:bg-primary flex items-center justify-center transition-all duration-200 shadow-lg"
-                                                    onClick={(e) => {
-                                                        console.log(
-                                                            "Play button clicked directly!",
-                                                            e
-                                                        );
-                                                        e.preventDefault();
-                                                        e.stopPropagation();
-                                                        handlePlayVideo();
-                                                    }}>
-                                                    <Play className="w-10 h-10 text-white ml-1 pointer-events-none" />
-                                                </div>
-                                            </div>
-
-                                            {/* Removed the overlay that was blocking clicks */}
-                                        </>
-                                    ) : null}
-
-                                    {/* Video element - improved with better attributes */}
-                                    <video
-                                        ref={videoRef}
-                                        className={`w-full h-full ${
-                                            videoPlaying && !videoError
-                                                ? "block"
-                                                : "hidden"
-                                        }`}
-                                        controls
-                                        onError={handleVideoError}
-                                        preload="metadata"
-                                        crossOrigin="anonymous"
-                                        playsInline
-                                        controlsList="nodownload">
-                                        <source
-                                            src={videoUrl}
-                                            type="video/mp4"
-                                        />
-                                        Your browser does not support the video
-                                        tag.
-                                    </video>
-                                </div>
-
-                                <p className="text-sm text-muted-foreground mt-2">
-                                    Watch this video to see how Wealth Oven
-                                    leasing works
-                                </p>
-
-                                {/* Enhanced error handling */}
-                                {videoError && (
-                                    <div className="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-                                        <p className="text-sm text-destructive font-medium">
-                                            Video failed to load. Status:{" "}
-                                            {videoStatus}
-                                        </p>
-                                        <div className="mt-2 space-x-2">
-                                            <button
-                                                className="text-destructive underline text-sm hover:no-underline"
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    console.log(
-                                                        "Retry button clicked"
-                                                    );
-                                                    setVideoError(false);
-                                                    setVideoPlaying(false);
-                                                    handlePlayVideo();
-                                                }}>
-                                                Try again
-                                            </button>
-                                            <span className="text-destructive/60">
-                                                •
-                                            </span>
-                                            <a
-                                                href={videoUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-destructive underline text-sm hover:no-underline">
-                                                Open in new tab
-                                            </a>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Debug info - remove this in production */}
-                                {process.env.NODE_ENV === "development" && (
-                                    <div className="mt-2 text-xs text-muted-foreground">
-                                        Debug: {videoStatus} | Playing:{" "}
-                                        {videoPlaying ? "Yes" : "No"} | Error:{" "}
-                                        {videoError ? "Yes" : "No"}
-                                    </div>
-                                )}
-                            </div>
-
                             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                                <Button
-                                    size="lg"
-                                    className="text-lg px-8"
-                                    onClick={() => setLeasingModalOpen(true)}>
-                                    Start Your Lease Today{" "}
+                                <Button 
+                                    size="lg" 
+                                    className="text-lg px-8" 
+                                    onClick={() => setLeasingModalOpen(true)}
+                                >
+                                    Lease a Wealth Oven Today
                                     <ArrowRight className="ml-2 h-5 w-5" />
                                 </Button>
-                              <Button
-  size="lg"
-  variant="outline"
-  className="text-lg px-8"
-  onClick={() => setStrategyCallModalOpen(true)}
->
-  Book a Free Strategy Call
-</Button>
+                                <Button 
+                                    size="lg" 
+                                    variant="outline" 
+                                    className="text-lg px-8"
+                                    onClick={() => setStrategyCallModalOpen(true)}
+                                >
+                                    Book Strategy Call
+                                </Button>
+                            </div>
+                        </div>
+
+                        
+                    </div>
+                </section>
+
+                {/* Two Types Section */}
+                <section className="py-16 px-4 bg-muted/30">
+                    <div className="container max-w-4xl mx-auto">
+                        <div className="text-center mb-12">
+                            <h2 className="text-3xl font-bold mb-6">
+                                The Two Types of Online Entrepreneurs
+                            </h2>
+                        </div>
+                        
+                        <div className="grid md:grid-cols-2 gap-8 mb-12">
+                            <div className="bg-card border rounded-lg p-6">
+                                <div className="flex items-center mb-4">
+                                    <TrendingUp className="h-8 w-8 text-primary mr-3" />
+                                    <h3 className="text-xl font-bold">The "Secret Knowers"</h3>
+                                </div>
+                                <p className="text-muted-foreground">
+                                    Those who know the secrets of online marketing and implement systems that allow them to execute these secrets and go on to make millions upon millions of dollars!
+                                </p>
+                            </div>
+                            
+                            <div className="bg-card border rounded-lg p-6">
+                                <div className="flex items-center mb-4">
+                                    <Target className="h-8 w-8 text-primary mr-3" />
+                                    <h3 className="text-xl font-bold">The "Other Type"</h3>
+                                </div>
+                                <p className="text-muted-foreground">
+                                    Those who for some reason despite putting in just as much or more effort than their secret-having counterparts cant seem to make their dreams of gaining financial freedom a reality.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="bg-primary/5 border border-primary/10 rounded-lg p-8 mb-8">
+                            <h3 className="text-2xl font-bold mb-4 text-center">
+                                If You're The "Other Type" of Online Entrepreneur...
+                            </h3>
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <div>
+                                    <h4 className="font-bold text-destructive mb-2">The Bad News:</h4>
+                                    <p className="text-muted-foreground">
+                                        You'll never get back the time or the money you've wasted trying all the get rich quick schemes known to man, whether it was drop shipping, affiliate marketing or any other get rich quick scheme.
+                                    </p>
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-primary mb-2">The Good News:</h4>
+                                    <div className="space-y-2 text-muted-foreground">
+                                        <div className="flex items-start">
+                                            <CheckCircle className="h-5 w-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
+                                            <p>You're not alone</p>
+                                        </div>
+                                        <div className="flex items-start">
+                                            <CheckCircle className="h-5 w-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
+                                            <p>You've come to the right place</p>
+                                        </div>
+                                        <div className="flex items-start">
+                                            <CheckCircle className="h-5 w-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
+                                            <p>We're here to help</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </section>
 
+                {/* Secrets Section */}
+                <section className="py-16 px-4">
+                    <div className="container max-w-4xl mx-auto">
+                        <div className="text-center mb-12">
+                            <h2 className="text-3xl font-bold mb-4">
+                                The "Secrets" Millionaire Online Entrepreneurs Know
+                            </h2>
+                            <p className="text-lg text-muted-foreground">
+                                That you probably don't...
+                            </p>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-8">
+                            {[
+                                {
+                                    letter: "A",
+                                    title: "Your Product Isn't The Most Important Factor",
+                                    description: "The product you are selling is not the most influential factor that determines your success selling online."
+                                },
+                                {
+                                    letter: "B",
+                                    title: "Traffic Is King",
+                                    description: "You can have the most immaculate and well designed product but if no-one has heard about it or seen it, then it will not generate any revenue for you."
+                                },
+                                {
+                                    letter: "C",
+                                    title: "A Business Without A System Is A Job",
+                                    description: "If you can only make money online when you have to sit there and be hands on then you might aswell go and work at Kmart, at least you will have health benefits."
+                                },
+                                {
+                                    letter: "D",
+                                    title: "System + Traffic Beats Product Quality",
+                                    description: "A bad product in combination with a great system and a lot of traffic will outperform a Phenomenal Product with a lacking system and minimal traffic 9 times out of 10."
+                                }
+                            ].map((secret, index) => (
+                                <div key={index} className="bg-card border rounded-lg p-6">
+                                    <div className="flex items-start mb-4">
+                                        <div className="bg-primary text-white rounded-full w-8 h-8 flex items-center justify-center font-bold mr-3">
+                                            {secret.letter}
+                                        </div>
+                                        <h3 className="text-lg font-bold">{secret.title}</h3>
+                                    </div>
+                                    <p className="text-muted-foreground">{secret.description}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="text-center mt-12 p-6 bg-muted rounded-lg border">
+                            <p className="text-lg font-bold mb-2">
+                                I hope you didn't fall for that!
+                            </p>
+                            <p className="text-muted-foreground">
+                                I left one crucial element out... <span className="font-bold text-primary">the system</span>.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Missing Element Section */}
+                <section className="py-16 px-4 bg-muted/30">
+                    <div className="container max-w-4xl mx-auto">
+                        <div className="text-center mb-12">
+                            <h2 className="text-3xl font-bold mb-6">
+                                The Missing Element: Where To Find The Perfect System
+                            </h2>
+                            <p className="text-xl text-muted-foreground mb-8">
+                                Where does one go to find such a system that will allow them to actually start their journey towards wealth accumulation, abundance and joy?
+                            </p>
+                            <p className="text-2xl font-bold text-primary">
+                                Well, you've come to the right place.
+                            </p>
+                        </div>
+
+                        <div className="bg-primary text-white rounded-2xl p-8 text-center">
+                            <h3 className="text-3xl font-bold mb-4">
+                                INTRODUCING WEALTH OVENS
+                            </h3>
+                            <p className="text-xl mb-6">
+                                A complete plug and play business solution for people who want the Wealth without the headache.
+                            </p>
+                            <div className="space-y-4 text-lg">
+                                <p>Supply us with your product and some promotional assets</p>
+                                <p>We handle everything else</p>
+                                <p>Start generating revenue immediately</p>
+                            </div>
+                        </div>
+
+                        <div className="text-center mt-12 bg-card border rounded-lg p-8">
+                            <h3 className="text-2xl font-bold mb-4">
+                                And Here's The Best Part...
+                            </h3>
+                            <p className="text-lg text-muted-foreground mb-4">
+                                You can lease a Wealth Oven today absolutely free as long as you're willing to invest some capital into the management and distribution of your advertisements!
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                                We'll take care of the rest!
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
                 {/* Available Funnels Section */}
-                <section className="py-16 px-4 bg-background">
+                <section className="py-16 px-4">
                     <div className="container max-w-6xl mx-auto">
                         <div className="text-center mb-12">
                             <h2 className="text-3xl font-bold mb-4">
@@ -346,136 +385,20 @@ export default function LeaseHomePage() {
                     </div>
                 </section>
 
-                {/* What Is Wealth Oven Section */}
-                <section className="pt-2 pb-16 px-4 bg-muted/30">
-                    <div className="container max-w-6xl mx-auto">
-                        <div className="max-w-4xl mx-auto text-center">
-                            <h2 className="text-3xl font-bold mb-8">
-                                What Is a Wealth Oven?
-                            </h2>
-                            <p className="text-lg text-muted-foreground mb-6">
-                                A Wealth Oven is a ready-to-run digital business
-                                system. It's designed to take in leads and
-                                consistently bake them into paying customers —
-                                just like an oven takes dough and bakes bread.
-                            </p>
-                            <p className="text-lg text-muted-foreground">
-                                Instead of wasting months (and thousands of
-                                dollars) building, testing, and fixing funnels,
-                                you can lease one instantly, risk-free.
-                            </p>
-                        </div>
-                    </div>
-                </section>
-
-                {/* ... rest of your existing sections remain the same ... */}
-
-                {/* What You Get Section */}
-                <section className="py-16 px-4">
-                    <div className="container max-w-6xl mx-auto">
-                        <div className="max-w-4xl mx-auto">
-                            <h2 className="text-3xl font-bold mb-12 text-center">
-                                What You Get With a Wealth Oven Lease
-                            </h2>
-
-                            <div className="grid md:grid-cols-2 gap-8">
-                                <div className="space-y-6">
-                                    {[
-                                        "$0 Upfront Setup – We build, test, and optimize the entire system for you at no charge.",
-                                        "Proven System – Every Wealth Oven is built using the same strategies we use to generate revenue in real markets.",
-                                        "Plug & Play Setup – Just plug in your product or service — everything else is ready to run.",
-                                        "Automated Conversions – Opt-in pages, sales pages, checkout, upsells, and follow-up emails are all included.",
-                                    ].map((item, index) => (
-                                        <div
-                                            key={index}
-                                            className="flex items-start">
-                                            <CheckCircle className="h-6 w-6 text-primary mr-3 mt-1 flex-shrink-0" />
-                                            <p className="text-muted-foreground">
-                                                {item}
-                                            </p>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="space-y-6">
-                                    {[
-                                        "Ad Management Support – Our ads team can run your traffic so you don't need to worry about targeting, testing, or scaling.",
-                                        "Risk-Free Model – You only pay us when the Wealth Oven makes money.",
-                                    ].map((item, index) => (
-                                        <div
-                                            key={index}
-                                            className="flex items-start">
-                                            <CheckCircle className="h-6 w-6 text-primary mr-3 mt-1 flex-shrink-0" />
-                                            <p className="text-muted-foreground">
-                                                {item}
-                                            </p>
-                                        </div>
-                                    ))}
-
-                                    <div className="bg-primary/5 p-6 rounded-lg border border-primary/10 mt-6">
-                                        <h3 className="font-semibold text-lg mb-3 text-primary">
-                                            The Buyout Option
-                                        </h3>
-                                        <p className="text-muted-foreground text-sm">
-                                            Love your Wealth Oven and want to
-                                            keep it forever? You can buy it
-                                            outright for 18 months of average
-                                            profit OR $10,000 (whichever is
-                                            higher). Until then, you lease with
-                                            no upfront fee and unlimited earning
-                                            potential.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                {/* ... rest of your existing sections ... */}
-
                 {/* Final CTA Section */}
                 <section className="py-20 px-4 bg-primary/5">
                     <div className="container max-w-4xl mx-auto text-center">
                         <h2 className="text-3xl md:text-4xl font-bold mb-6">
-                            Ready to Test a Wealth Oven?
+                            So What Are You Waiting For?
                         </h2>
 
                         <div className="bg-background p-8 rounded-lg border shadow-sm mb-8">
-                            <div className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4">
-                                <div className="text-center flex-1">
-                                    <div className="font-bold text-lg mb-2">
-                                        You bring the dough
-                                    </div>
-                                    <p className="text-sm text-muted-foreground">
-                                        (leads and ad spend)
-                                    </p>
-                                </div>
-
-                                <div className="flex justify-center rotate-90 md:rotate-0">
-                                    <ArrowRight className="h-8 w-8 text-primary" />
-                                </div>
-
-                                <div className="text-center flex-1">
-                                    <div className="font-bold text-lg mb-2">
-                                        We bring the oven
-                                    </div>
-                                    <p className="text-sm text-muted-foreground">
-                                        (the system)
-                                    </p>
-                                </div>
-
-                                <div className="flex justify-center rotate-90 md:rotate-0">
-                                    <ArrowRight className="h-8 w-8 text-primary" />
-                                </div>
-
-                                <div className="text-center flex-1">
-                                    <div className="font-bold text-lg mb-2">
-                                        Together we bake the bread
-                                    </div>
-                                    <p className="text-sm text-muted-foreground">
-                                        (sales and profit)
-                                    </p>
+                            <div className="max-w-2xl mx-auto">
+                                <p className="text-lg text-muted-foreground mb-6">
+                                    Click the link below and <span className="font-bold text-primary">LEASE A WEALTH OVEN TODAY</span>
+                                </p>
+                                <div className="text-sm text-muted-foreground">
+                                    <p>Terms and conditions apply.</p>
                                 </div>
                             </div>
                         </div>
@@ -485,32 +408,30 @@ export default function LeaseHomePage() {
                                 size="lg"
                                 className="text-lg px-8"
                                 onClick={() => setLeasingModalOpen(true)}>
-                                Start Your Lease Today{" "}
+                                Lease a Wealth Oven Today
                                 <ArrowRight className="ml-2 h-5 w-5" />
                             </Button>
                             <Button
                                 size="lg"
                                 variant="outline"
                                 className="text-lg px-8"
-                                asChild>
-                                <Link href="/strategy-call">
-                                    Book a Free Strategy Call
-                                </Link>
+                                onClick={() => setStrategyCallModalOpen(true)}>
+                                Book a Free Strategy Call
                             </Button>
                         </div>
                     </div>
                 </section>
             </main>
 
-            {/* Leasing Modal */}
+            {/* Modals */}
             <LeasingModal
                 open={leasingModalOpen}
                 onOpenChange={setLeasingModalOpen}
             />
             <StrategyCallModal
-  open={strategyCallModalOpen}
-  onOpenChange={setStrategyCallModalOpen}
-/>
+                open={strategyCallModalOpen}
+                onOpenChange={setStrategyCallModalOpen}
+            />
         </div>
     );
 }
